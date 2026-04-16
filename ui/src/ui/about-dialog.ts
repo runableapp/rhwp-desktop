@@ -1,13 +1,13 @@
 /**
  * 제품 정보 / 라이센스 다이얼로그
  *
- * HWP 공개 스펙(hwp_spec_5.0) 저작권 조항에 따른 필수 고지 문구를 포함한다.
- * 사용된 외부 크레이트의 오픈소스 라이선스 목록도 표시한다.
+ * RHWP Desktop 애플리케이션 정보와 사용된 외부 크레이트의 오픈소스 라이선스 목록을 표시한다.
  */
 import { ModalDialog } from './dialog';
 
-/** 외부 크레이트 라이선스 정보 */
+/** 오픈소스 라이선스 표에 나열하는 구성 요소 (rhwp 및 의존 크레이트) */
 const THIRD_PARTY_LICENSES = [
+  { name: 'rhwp', license: 'MIT' },
   { name: 'wasm-bindgen', license: 'MIT / Apache-2.0' },
   { name: 'web-sys', license: 'MIT / Apache-2.0' },
   { name: 'js-sys', license: 'MIT / Apache-2.0' },
@@ -27,36 +27,39 @@ export class AboutDialog extends ModalDialog {
     const body = document.createElement('div');
     body.className = 'about-body';
 
-    // 제품 영문명
-    const titleEn = document.createElement('div');
-    titleEn.className = 'about-product-name';
-    titleEn.textContent = 'HWP 5.0 Compatible Module for Rust';
-    body.appendChild(titleEn);
+    const titleRow = document.createElement('div');
+    titleRow.className = 'about-title-row';
+    const titleMain = document.createElement('span');
+    titleMain.className = 'about-product-name';
+    titleMain.textContent = 'RHWP Desktop';
+    titleRow.appendChild(titleMain);
+    const versionInline = document.createElement('span');
+    versionInline.className = 'about-version-inline';
+    versionInline.textContent = 'Version 1.0';
+    titleRow.appendChild(versionInline);
+    body.appendChild(titleRow);
 
-    // 제품 한글명
     const titleKo = document.createElement('div');
     titleKo.className = 'about-product-name-ko';
-    titleKo.textContent = '한글 문서 호환 저장 도구';
+    titleKo.textContent = 'rhwp 데스크톱 래퍼';
     body.appendChild(titleKo);
 
-    // 버전
-    const version = document.createElement('div');
-    version.className = 'about-version';
-    version.textContent = `Version ${__APP_VERSION__}`;
-    body.appendChild(version);
+    const wrapDesc = document.createElement('div');
+    wrapDesc.className = 'about-wrap-desc';
+    wrapDesc.textContent =
+      '이 프로그램은 rhwp를 데스크톱 애플리케이션으로 실행할 수 있게 하는 래퍼입니다.';
+    body.appendChild(wrapDesc);
 
-    // 기술 스택
-    const tech = document.createElement('div');
-    tech.className = 'about-tech';
-    tech.textContent = 'Rust + WebAssembly + TypeScript';
-    body.appendChild(tech);
-
-    // HWP 스펙 고지 문구 (필수)
-    const notice = document.createElement('div');
-    notice.className = 'about-notice';
-    notice.textContent =
-      '본 제품은 한글과컴퓨터의 한글 문서 파일(.hwp) 공개 문서를 참고하여 개발하였습니다.';
-    body.appendChild(notice);
+    const rhwpRepo = document.createElement('div');
+    rhwpRepo.className = 'about-rhwp-repo';
+    rhwpRepo.appendChild(document.createTextNode('rhwp '));
+    const rhwpGh = document.createElement('a');
+    rhwpGh.href = 'https://github.com/edwardkim/rhwp';
+    rhwpGh.textContent = 'https://github.com/edwardkim/rhwp';
+    rhwpGh.target = '_blank';
+    rhwpGh.rel = 'noopener noreferrer';
+    rhwpRepo.appendChild(rhwpGh);
+    body.appendChild(rhwpRepo);
 
     // 오픈소스 라이선스
     const licenseTitle = document.createElement('div');
@@ -81,7 +84,7 @@ export class AboutDialog extends ModalDialog {
     // 저작권
     const copyright = document.createElement('div');
     copyright.className = 'about-copyright';
-    copyright.textContent = '\u00A9 2026';
+    copyright.textContent = '\u00A9 2026 Runable.app';
     body.appendChild(copyright);
 
     return body;

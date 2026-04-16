@@ -244,6 +244,19 @@
   padding: 16px 24px;
 }
 
+.about-title-row {
+  display: flex;
+  flex-wrap: wrap;
+  align-items: baseline;
+  justify-content: center;
+  gap: 10px;
+  margin-bottom: 6px;
+}
+
+.about-title-row .about-product-name {
+  margin-bottom: 0;
+}
+
 .about-product-name {
   font-size: 18px;
   font-weight: bold;
@@ -251,34 +264,40 @@
   margin-bottom: 2px;
 }
 
+.about-version-inline {
+  font-size: var(--font-size-sm);
+  font-weight: normal;
+  color: var(--color-text-muted);
+  line-height: 1.2;
+}
+
 .about-product-name-ko {
   font-size: var(--font-size-md);
   color: #4a5a8a;
-  margin-bottom: 8px;
+  margin-bottom: 6px;
 }
 
-.about-version {
-  font-size: var(--font-size-md);
-  color: var(--color-text-muted);
-  margin-bottom: 12px;
-}
-
-.about-tech {
+.about-wrap-desc {
   font-size: var(--font-size-sm);
-  color: var(--color-text-hint);
-  margin-bottom: 16px;
+  color: var(--color-text-muted);
+  line-height: 1.5;
+  max-width: 400px;
+  margin: 0 auto 12px;
+  text-align: center;
 }
 
-.about-notice {
-  background: #f5f6fa;
-  border: 1px solid #d0d4e2;
-  border-radius: 4px;
-  padding: 10px 14px;
-  font-size: var(--font-size-base);
-  color: #444;
-  line-height: 1.6;
-  margin-bottom: 16px;
-  text-align: left;
+.about-rhwp-repo {
+  font-size: var(--font-size-sm);
+  color: var(--color-text-muted);
+  margin: 0 auto 16px;
+  text-align: center;
+  line-height: 1.4;
+  word-break: break-all;
+}
+
+.about-rhwp-repo a {
+  color: var(--color-link, #2563eb);
+  text-decoration: underline;
 }
 
 .about-license-title {

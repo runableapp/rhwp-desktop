@@ -234,6 +234,33 @@
         font-family: var(--mono);
         font-size: 12px;
       }
+
+      .rhwp-note {
+        padding: 16px 18px;
+        margin: 0 0 14px;
+      }
+      .rhwp-note h3 {
+        margin: 0 0 8px;
+        font-size: 15px;
+        letter-spacing: -0.1px;
+      }
+      .rhwp-note p {
+        margin: 0 0 10px;
+        color: var(--muted);
+        font-size: 14px;
+        line-height: 1.6;
+      }
+      .rhwp-note p:last-child {
+        margin-bottom: 0;
+      }
+      .rhwp-note a {
+        color: var(--text);
+        text-decoration: underline;
+        text-decoration-color: rgba(255, 255, 255, 0.35);
+      }
+      .rhwp-note a:hover {
+        text-decoration-color: rgba(255, 255, 255, 0.7);
+      }
       .cta-row {
         display: flex;
         flex-wrap: wrap;
@@ -381,6 +408,16 @@
         line-height: 1.35;
         text-align: left;
       }
+      footer .tm-note ol {
+        margin: 0;
+        padding-left: 18px;
+      }
+      footer .tm-note li {
+        margin: 6px 0 0;
+      }
+      footer .tm-note li:first-child {
+        margin-top: 0;
+      }
       footer .tm-note a {
         color: inherit;
         text-decoration: none;
@@ -447,13 +484,7 @@
             <p>
               <b><span class="accent">RHWP Desktop</span></b>은
               <b><a href="https://github.com/edwardkim/rhwp" target="_blank" rel="noreferrer">rhwp 프로젝트</a></b>를
-              Windows / macOS / Linux에서 데스크톱 앱으로 쓰기 위한 가벼운 래퍼입니다. (<a
-                id="local-preview-word"
-                href="http://127.0.0.1:3001/docs/index.html"
-                target="_blank"
-                rel="noreferrer"
-                >로컬 미리보기</a
-              >)
+              Windows / macOS / Linux에서 데스크톱 앱으로 쓰기 위한 가벼운 래퍼입니다.
             </p>
             <div class="version-line" aria-label="versions">
               기반 버전: rhwp WASM 코어 <code>0.7.2</code> · rhwp-studio UI <code>0.7.2</code>
@@ -463,6 +494,23 @@
           <div class="shot">
             <img src="./rhwp-desktop.webp" alt="rhwp-desktop 스크린샷" />
           </div>
+        </section>
+
+        <section class="card rhwp-note" aria-label="rhwp note">
+          <h3>🙌 rhwp 프로젝트에 감사드립니다</h3>
+    
+          <p>
+            이 프로젝트는 훌륭한
+            <a href="https://github.com/edwardkim/rhwp" target="_blank" rel="noreferrer">rhwp</a>
+            프로젝트를 데스크톱에서 사용할 수 있도록 만들기 위해 시작했습니다.
+          </p>
+          <p>
+            RHWP Desktop은 Electron 기반의 <b>간단한 데스크톱 래퍼</b>로, Windows / macOS / Linux에서 동작합니다.
+            웹에서 사용하려면 rhwp 프로젝트 저장소를 참고해주세요.
+          </p>
+          <p>
+            rhwp를 오픈소스로 공개해주신 저자께 진심으로 감사드립니다.
+          </p>
         </section>
 
         <div class="download-row" aria-label="download">
@@ -493,7 +541,17 @@
 
       <footer>
         <div class="tm-note" id="tm-footnote-1">
-          1. 아래아 한글은 (주)한글과컴퓨터의 상표입니다. (<a href="#ah-title">위로</a>)
+          <ol>
+            <li>아래아 한글은 (주)한글과컴퓨터의 상표입니다. (<a href="#ah-title">위로</a>)</li>
+            <li>
+              이 프로젝트는
+              <a href="https://github.com/edwardkim/rhwp" target="_blank" rel="noreferrer">rhwp 프로젝트</a>의 WASM 코어와
+              rhwp-studio UI를 기반으로 만든 데스크톱 앱입니다.
+            </li>
+            <li>
+              좌측 상단의 로고는 <b>rhwp 프로젝트</b>의 로고입니다.       
+            </li>
+          </ol>
         </div>
         <hr />
         <div class="thanks" aria-label="thanks">

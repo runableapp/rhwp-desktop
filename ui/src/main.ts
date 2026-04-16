@@ -85,7 +85,7 @@ const sbSection = () => document.getElementById('sb-section')!;
 const sbZoomVal = () => document.getElementById('sb-zoom-val')!;
 
 function setWindowTitle(docName?: string): void {
-  document.title = docName ? `rhwp - ${docName}` : 'rhwp';
+  document.title = docName ? `RHWP Desktop - ${docName}` : 'RHWP Desktop';
 }
 
 async function initialize(): Promise<void> {

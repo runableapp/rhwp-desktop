@@ -12,7 +12,7 @@ jobs:
     strategy:
       fail-fast: false
       matrix:
-        os: [windows-latest, macos-latest]
+        os: [ubuntu-latest, windows-latest, macos-latest]
     runs-on: ${{ matrix.os }}
     defaults:
       run:
@@ -25,6 +25,12 @@ jobs:
         uses: actions/setup-node@v4
         with:
           node-version: "22"
+
+      - name: Install Linux build dependencies
+        if: runner.os == 'Linux'
+        run: |
+          sudo apt-get update
+          sudo apt-get install -y binutils fakeroot rpm squashfs-tools
 
       - name: Install desktop deps
         run: npm ci
@@ -51,6 +57,10 @@ jobs:
       - name: Build desktop
         run: npm run build
 
+      - name: Package (Linux AppImage)
+        if: runner.os == 'Linux'
+        run: npx electron-builder --linux AppImage --publish never
+
       - name: Package (Windows)
         if: runner.os == 'Windows'
         run: npx electron-builder --win nsis --publish never
@@ -64,6 +74,7 @@ jobs:
         with:
           name: desktop-${{ runner.os }}
           path: |
+            desktop/release/*.AppImage
             desktop/release/*.exe
             desktop/release/*.dmg
             desktop/release/*.zip
