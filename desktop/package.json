@@ -30,8 +30,9 @@
     "typescript": "^6.0.2"
   },
   "build": {
-    "appId": "io.rhwp.desktop",
-    "productName": "rhwp",
+    "appId": "app.runable.rhwp-desktop",
+    "productName": "rhwp-desktop",
+    "executableName": "rhwp-desktop",
     "artifactName": "rhwp-desktop-${version}.${ext}",
     "directories": {
       "buildResources": "build-resources",
