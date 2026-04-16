@@ -1,0 +1,71 @@
+{
+  "name": "desktop",
+  "version": "1.0.0",
+  "private": true,
+  "main": "dist/main.js",
+  "scripts": {
+    "dev:ui": "tsx src/runner-dev.ts",
+    "dev:electron": "UI_DEV_SERVER_URL=${UI_DEV_SERVER_URL:-http://127.0.0.1:7710} node node_modules/electron/cli.js dist/main.js",
+    "dev": "concurrently -k \"tsc -w -p tsconfig.json\" \"npm run dev:electron\"",
+    "start": "node dist/main.js",
+    "build": "tsc -p tsconfig.json",
+    "build:ui": "cd ../ui && npm ci && npm run build",
+    "build:all": "npm run build:ui && npm run build",
+    "prepare:icons": "node scripts/prepare-icons.mjs",
+    "dist:linux": "npm run build:all && npm run prepare:icons && electron-builder --linux AppImage",
+    "dist:win": "npm run build:all && npm run prepare:icons && node scripts/gen-win-ico.mjs && electron-builder --win nsis",
+    "dist:mac": "npm run build:all && npm run prepare:icons && electron-builder --mac dmg"
+  },
+  "keywords": [],
+  "author": "",
+  "license": "ISC",
+  "description": "",
+  "devDependencies": {
+    "@types/node": "^25.6.0",
+    "concurrently": "^9.2.1",
+    "electron": "^41.2.1",
+    "electron-builder": "^26.8.1",
+    "png-to-ico": "^3.0.1",
+    "tsx": "^4.21.0",
+    "typescript": "^6.0.2"
+  },
+  "build": {
+    "appId": "io.rhwp.desktop",
+    "productName": "rhwp",
+    "directories": {
+      "buildResources": "build-resources",
+      "output": "release"
+    },
+    "icon": "build-resources/icon.png",
+    "files": [
+      "dist/**",
+      "node_modules/**",
+      "package.json"
+    ],
+    "extraResources": [
+      {
+        "from": "../ui/dist",
+        "to": "ui-dist"
+      }
+    ],
+    "linux": {
+      "target": [
+        "AppImage"
+      ],
+      "icon": "build-resources/icon.png",
+      "category": "Office"
+    },
+    "win": {
+      "target": [
+        "nsis"
+      ],
+      "icon": "build-resources/icon.ico"
+    },
+    "mac": {
+      "target": [
+        "dmg"
+      ],
+      "icon": "build-resources/icon.icns"
+    }
+  }
+}

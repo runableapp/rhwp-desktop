@@ -1,0 +1,61 @@
+# OS / editor
+.DS_Store
+Thumbs.db
+.idea/
+.vscode/
+*.swp
+*.swo
+
+# Local notes (requested)
+notes/
+resources/
+
+# Logs
+*.log
+npm-debug.log*
+yarn-debug.log*
+yarn-error.log*
+pnpm-debug.log*
+
+# Node / JS dependencies
+node_modules/
+**/node_modules/
+
+# Build outputs
+dist/
+**/dist/
+out/
+**/out/
+build/
+**/build/
+
+# Vite / tooling caches
+.vite/
+**/.vite/
+.turbo/
+**/.turbo/
+.parcel-cache/
+**/.parcel-cache/
+
+# Electron / electron-builder outputs
+desktop/release/
+desktop/.webpack/
+desktop/.electron/
+
+# WASM build artifacts (if generated)
+core/target/
+core/pkg/.cache/
+
+# Rust
+target/
+**/target/
+
+# Env files
+.env
+.env.*
+!.env.example
+!.env.*.example
+
+# Certificates / local secrets (if any)
+web/certs/
+*.code-workspace

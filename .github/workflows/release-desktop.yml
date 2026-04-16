@@ -1,0 +1,70 @@
+name: Build Desktop Releases
+
+on:
+  workflow_dispatch:
+  push:
+    tags:
+      - "desktop-v*"
+
+jobs:
+  build:
+    strategy:
+      fail-fast: false
+      matrix:
+        os: [windows-latest, macos-latest]
+    runs-on: ${{ matrix.os }}
+    defaults:
+      run:
+        working-directory: desktop
+    steps:
+      - name: Checkout
+        uses: actions/checkout@v4
+
+      - name: Setup Node
+        uses: actions/setup-node@v4
+        with:
+          node-version: "22"
+
+      - name: Install desktop deps
+        run: npm ci
+
+      - name: Install UI deps
+        working-directory: ui
+        run: npm ci
+
+      - name: Build UI
+        working-directory: ui
+        run: npm run build
+
+      - name: Prepare icons (base png)
+        run: npm run prepare:icons
+
+      - name: Prepare icons (Windows .ico)
+        if: runner.os == 'Windows'
+        run: node scripts/gen-win-ico.mjs
+
+      - name: Prepare icons (macOS .icns)
+        if: runner.os == 'macOS'
+        run: ./scripts/gen-mac-icns.sh
+
+      - name: Build desktop
+        run: npm run build
+
+      - name: Package (Windows)
+        if: runner.os == 'Windows'
+        run: npx electron-builder --win nsis --publish never
+
+      - name: Package (macOS)
+        if: runner.os == 'macOS'
+        run: npx electron-builder --mac dmg --publish never
+
+      - name: Upload artifacts
+        uses: actions/upload-artifact@v4
+        with:
+          name: desktop-${{ runner.os }}
+          path: |
+            desktop/release/*.exe
+            desktop/release/*.dmg
+            desktop/release/*.zip
+            desktop/release/*.yml
+

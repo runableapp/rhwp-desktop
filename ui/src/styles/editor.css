@@ -1,0 +1,71 @@
+/* ================================================================
+   에디터 영역
+   ================================================================ */
+
+/* editor-area: 눈금자 + 스크롤 영역을 2×2 Grid로 배치 */
+#editor-area {
+  display: grid;
+  grid-template-columns: 20px 1fr;
+  grid-template-rows: 20px 1fr;
+  flex: 1;
+  overflow: hidden;
+}
+
+/* 눈금자 교차 코너 (좌상단) */
+#ruler-corner {
+  background: #d0d0d0;
+  border-right: 1px solid #999;
+  border-bottom: 1px solid #999;
+}
+
+/* 가로 눈금자 */
+#h-ruler {
+  display: block;
+  border-bottom: 1px solid #999;
+  background: #d0d0d0;
+  cursor: default;
+}
+
+/* 세로 눈금자 */
+#v-ruler {
+  display: block;
+  border-right: 1px solid #999;
+  background: #d0d0d0;
+  cursor: default;
+}
+
+#scroll-container {
+  position: relative;
+  overflow-y: auto;
+  overflow-x: auto;
+  background: var(--color-hover-bg);
+}
+
+#scroll-content {
+  position: relative;
+  margin: 0 auto;
+}
+
+#scroll-content canvas {
+  position: absolute;
+  left: 50%;
+  transform: translateX(-50%);
+  box-shadow: 0 2px 8px rgba(0, 0, 0, 0.15);
+  background: var(--color-surface);
+}
+
+#scroll-content.grid-mode canvas {
+  box-shadow: 0 1px 4px var(--overlay-bg);
+}
+
+/* Drag & Drop */
+#scroll-container.drag-over {
+  background: #d0d8e8;
+  outline: 3px dashed #4a90d9;
+  outline-offset: -3px;
+}
+
+/* 머리말/꼬리말 편집 모드: 본문 영역 dimming */
+#scroll-container.hf-editing {
+  background: #c8c8c8;
+}
