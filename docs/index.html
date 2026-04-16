@@ -1,0 +1,419 @@
+<!doctype html>
+<html lang="ko">
+  <head>
+    <meta charset="utf-8" />
+    <meta name="viewport" content="width=device-width, initial-scale=1" />
+    <title>rhwp-desktop (hwp-editor)</title>
+    <meta
+      name="description"
+      content="rhwp WASM 코어 + rhwp-studio UI 기반의 HWP 데스크톱(standalone) 뷰어/에디터. Electron으로 패키징."
+    />
+    <meta name="color-scheme" content="light" />
+    <style>
+      :root {
+        /* Bright Gen Z palette (always-on) */
+        --bg: #ffffff;
+        --panel: rgba(255, 255, 255, 0.72);
+        --panel-2: rgba(255, 255, 255, 0.88);
+        --text: rgba(12, 12, 26, 0.92);
+        --muted: rgba(12, 12, 26, 0.72);
+        --dim: rgba(12, 12, 26, 0.56);
+        --border: rgba(16, 16, 34, 0.12);
+        --brand: #00c2ff;
+        --brand-2: #7c3aed;
+        --brand-3: #ff4d8d;
+        --shadow: 0 18px 70px rgba(20, 20, 40, 0.14);
+        --glass: blur(14px);
+        --mono: ui-monospace, SFMono-Regular, Menlo, Monaco, Consolas, "Liberation Mono",
+          "Courier New", monospace;
+        --sans: ui-sans-serif, system-ui, -apple-system, Segoe UI, Roboto, Helvetica, Arial,
+          "Apple Color Emoji", "Segoe UI Emoji";
+      }
+
+      * {
+        box-sizing: border-box;
+      }
+      html,
+      body {
+        height: 100%;
+      }
+      body {
+        margin: 0;
+        font-family: var(--sans);
+        color: var(--text);
+        background:
+          radial-gradient(1100px 760px at 10% -15%, rgba(0, 194, 255, 0.22), transparent 60%),
+          radial-gradient(980px 700px at 95% 0%, rgba(124, 58, 237, 0.18), transparent 58%),
+          radial-gradient(1000px 760px at 50% 115%, rgba(255, 77, 141, 0.14), transparent 58%),
+          linear-gradient(180deg, rgba(255, 255, 255, 1), rgba(252, 250, 255, 1));
+        background-repeat: no-repeat;
+        line-height: 1.55;
+      }
+
+      a {
+        color: inherit;
+        text-underline-offset: 3px;
+      }
+      a:hover {
+        text-decoration-thickness: 2px;
+      }
+
+      .wrap {
+        max-width: 1080px;
+        margin: 0 auto;
+        padding: 28px 20px 72px;
+      }
+
+      header {
+        display: flex;
+        align-items: center;
+        justify-content: space-between;
+        gap: 16px;
+        padding: 14px 0 24px;
+      }
+      .brand {
+        display: flex;
+        align-items: center;
+        gap: 12px;
+        min-width: 0;
+      }
+      .logo {
+        width: 40px;
+        height: 40px;
+        border-radius: 12px;
+        background:
+          url("./logo-256.png") center / cover no-repeat,
+          linear-gradient(135deg, rgba(110, 231, 255, 0.95), rgba(167, 139, 250, 0.95));
+        box-shadow: var(--shadow);
+      }
+      .brand h1 {
+        margin: 0;
+        font-size: 16px;
+        letter-spacing: 0.2px;
+      }
+      .brand .sub {
+        margin: 0;
+        font-size: 12.5px;
+        color: var(--muted);
+        overflow: hidden;
+        text-overflow: ellipsis;
+        white-space: nowrap;
+      }
+
+      nav {
+        display: flex;
+        gap: 10px;
+        flex-wrap: wrap;
+        justify-content: flex-end;
+      }
+      .pill {
+        display: inline-flex;
+        align-items: center;
+        gap: 8px;
+        padding: 10px 12px;
+        border: 1px solid var(--border);
+        border-radius: 999px;
+        text-decoration: none;
+        background: var(--panel);
+        backdrop-filter: var(--glass);
+      }
+      .pill:hover {
+        background: var(--panel-2);
+      }
+      .pill code {
+        font-family: var(--mono);
+        font-size: 12px;
+        color: var(--muted);
+      }
+
+      .hero-brand {
+        display: flex;
+        align-items: center;
+        gap: 12px;
+        margin: 14px 0 4px;
+      }
+      .hero-brand .logo {
+        width: 48px;
+        height: 48px;
+        border-radius: 16px;
+      }
+      .hero-brand-title {
+        display: flex;
+        flex-direction: column;
+        gap: 2px;
+        min-width: 0;
+      }
+      .hero-brand-title strong {
+        font-size: 22px;
+        letter-spacing: -0.2px;
+        line-height: 1.1;
+      }
+      .hero-brand-title span {
+        font-size: 13px;
+        color: var(--muted);
+        overflow: hidden;
+        text-overflow: ellipsis;
+        white-space: nowrap;
+      }
+
+      .hero {
+        display: grid;
+        grid-template-columns: 1fr;
+        gap: 22px;
+        align-items: start;
+        padding: 22px 0 16px;
+      }
+
+      .card {
+        border: 1px solid var(--border);
+        border-radius: 18px;
+        background: var(--panel);
+        box-shadow: var(--shadow);
+        overflow: hidden;
+        backdrop-filter: var(--glass);
+      }
+
+      .hero-copy {
+        padding: 22px 22px 18px;
+      }
+      .kicker {
+        display: inline-flex;
+        align-items: center;
+        gap: 10px;
+        padding: 6px 10px;
+        border: 1px solid var(--border);
+        border-radius: 999px;
+        background: rgba(255, 255, 255, 0.05);
+        color: var(--muted);
+        font-size: 13px;
+      }
+      .kicker b {
+        color: var(--text);
+        font-weight: 650;
+      }
+      .hero-copy h2 {
+        margin: 14px 0 10px;
+        font-size: 34px;
+        letter-spacing: -0.4px;
+        line-height: 1.15;
+      }
+      .hero-copy p {
+        margin: 0 0 14px;
+        color: var(--muted);
+        font-size: 15.5px;
+      }
+      .version-line {
+        margin-top: 10px;
+        color: var(--dim);
+        font-size: 12.5px;
+        white-space: nowrap;
+        overflow: hidden;
+        text-overflow: ellipsis;
+      }
+      .version-line code {
+        font-family: var(--mono);
+        font-size: 12px;
+      }
+      .cta-row {
+        display: flex;
+        flex-wrap: wrap;
+        gap: 10px;
+        padding-top: 6px;
+      }
+      .btn {
+        display: inline-flex;
+        align-items: center;
+        justify-content: center;
+        gap: 2px;
+        padding: 10px 14px;
+        border-radius: 12px;
+        border: 1px solid var(--border);
+        text-decoration: none;
+        background: rgba(255, 255, 255, 0.05);
+        flex-direction: column;
+        align-items: flex-start;
+      }
+      .btn .btn-main {
+        font-weight: 650;
+        letter-spacing: 0.1px;
+      }
+      .btn .btn-sub {
+        font-size: 12.5px;
+        color: var(--muted);
+      }
+      .btn.primary {
+        border-color: rgba(34, 211, 238, 0.55);
+        background: linear-gradient(
+          135deg,
+          rgba(34, 211, 238, 0.28),
+          rgba(167, 139, 250, 0.22),
+          rgba(251, 113, 133, 0.16)
+        );
+      }
+      .btn:hover {
+        background: var(--panel-2);
+      }
+
+      .shot {
+        display: grid;
+      }
+      .shot a {
+        display: block;
+        text-decoration: none;
+        cursor: zoom-in;
+      }
+      .shot img {
+        width: 100%;
+        height: auto;
+        display: block;
+        border-radius: 18px;
+      }
+
+      .section {
+        margin-top: 22px;
+        padding: 18px 18px 6px;
+      }
+      .section h3 {
+        margin: 0 0 10px;
+        font-size: 15px;
+        letter-spacing: 0.2px;
+      }
+      .section ul {
+        margin: 0 0 12px 18px;
+        padding: 0;
+        color: var(--muted);
+        font-size: 14px;
+      }
+      .section li {
+        margin: 6px 0;
+      }
+
+      pre {
+        margin: 10px 0 14px;
+        padding: 12px 12px;
+        border-radius: 14px;
+        border: 1px solid var(--border);
+        background: rgba(0, 0, 0, 0.18);
+        overflow: auto;
+        font-family: var(--mono);
+        font-size: 12.5px;
+        color: var(--text);
+      }
+      @media (prefers-color-scheme: light) {
+        pre {
+          background: rgba(0, 0, 0, 0.04);
+        }
+      }
+
+      footer {
+        margin-top: 22px;
+        color: var(--dim);
+        font-size: 12.5px;
+        padding: 16px 2px 0;
+      }
+      footer .thanks {
+        display: flex;
+        justify-content: center;
+        margin: 10px 0 12px;
+      }
+      footer .thanks a {
+        display: block;
+        cursor: pointer;
+      }
+      footer .thanks img {
+        width: min(260px, 72vw);
+        height: auto;
+        display: block;
+        border-radius: 0;
+        box-shadow: none;
+      }
+      footer hr {
+        border: 0;
+        border-top: 1px solid var(--border);
+        opacity: 0.6;
+        margin: 12px auto 14px;
+        max-width: 720px;
+      }
+      footer .license {
+        display: flex;
+        flex-wrap: wrap;
+        gap: 8px;
+        align-items: baseline;
+        justify-content: center;
+        text-align: center;
+      }
+      .download-row {
+        margin-top: 18px;
+        display: flex;
+        justify-content: center;
+      }
+      .download-row .btn {
+        align-items: center;
+        text-align: center;
+      }
+      footer code {
+        font-family: var(--mono);
+      }
+    </style>
+  </head>
+  <body>
+    <div class="wrap">
+      <main>
+        <section class="hero">
+          <div class="card hero-copy">
+            <div class="kicker">
+              <b>Standalone</b> · 로컬에서 바로 여는 HWP 뷰어/에디터 · <b>MIT 라이센스</b>
+            </div>
+            <div class="hero-brand" aria-label="app name">
+              <div class="logo" aria-hidden="true"></div>
+              <div class="hero-brand-title">
+                <strong>RHWP Desktop</strong>
+                <span>HWP 뷰어/에디터</span>
+              </div>
+            </div>
+            <h2>아래아 한글 호환, 무료 한글 워드프로세서를 데스크톱에서.</h2>
+            <p>
+              <b>RHWP Desktop</b>은
+              <b><a href="https://github.com/edwardkim/rhwp" target="_blank" rel="noreferrer">rhwp 프로젝트</a></b>를
+              Windows / macOS / Linux에서 데스크톱 앱으로 쓰기 위한 가벼운 래퍼입니다.
+            </p>
+            <div class="version-line" aria-label="versions">
+              기반 버전: rhwp WASM 코어 <code>0.7.2</code> · rhwp-studio UI <code>0.7.2</code>
+            </div>
+          </div>
+
+          <div class="shot">
+            <a href="./rhwp-desktop.webp" target="_blank" rel="noreferrer">
+              <img src="./rhwp-desktop.webp" alt="rhwp-desktop 스크린샷 (클릭하여 원본 보기)" />
+            </a>
+          </div>
+        </section>
+
+        <div class="download-row" aria-label="download">
+          <a
+            class="btn primary"
+            href="https://github.com/runableapp/rhwp-desktop/releases"
+            target="_blank"
+            rel="noreferrer"
+          >
+            <span class="btn-main">다운로드</span>
+          </a>
+        </div>
+      </main>
+
+      <footer>
+        <hr />
+        <div class="thanks" aria-label="thanks">
+          <a href="./runable-thankyou-ko.webp" target="_blank" rel="noreferrer">
+            <img src="./runable-thankyou-ko.webp" alt="Runable 감사 이미지" />
+          </a>
+        </div>
+        <div class="license">
+          <span><b>MIT License</b></span>
+          <span>·</span>
+          <span>Copyright © 2026 <a href="https://runable.app" target="_blank" rel="noreferrer">Runable.app</a></span>
+        </div>
+      </footer>
+    </div>
+  </body>
+</html>
