@@ -80,3 +80,40 @@ jobs:
             desktop/release/*.zip
             desktop/release/*.yml
 
+  create-release:
+    name: Create GitHub Release (attach binaries)
+    if: startsWith(github.ref, 'refs/tags/')
+    needs: [build]
+    runs-on: ubuntu-latest
+    permissions:
+      contents: write
+    steps:
+      - name: Download all build artifacts
+        uses: actions/download-artifact@v4
+        with:
+          path: release-artifacts
+          pattern: "desktop-*"
+          merge-multiple: true
+
+      - name: List release files
+        shell: bash
+        run: |
+          set -euo pipefail
+          ls -la release-artifacts || true
+          echo "==> Found files:"
+          find release-artifacts -type f -maxdepth 2 -print
+
+      - name: Create/Update GitHub Release and upload assets
+        uses: softprops/action-gh-release@v2
+        with:
+          tag_name: ${{ github.ref_name }}
+          name: Desktop Release ${{ github.ref_name }}
+          draft: false
+          prerelease: false
+          files: |
+            release-artifacts/**/*.AppImage
+            release-artifacts/**/*.exe
+            release-artifacts/**/*.dmg
+            release-artifacts/**/*.zip
+            release-artifacts/**/*.yml
+
