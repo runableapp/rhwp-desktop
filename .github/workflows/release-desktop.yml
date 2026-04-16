@@ -78,7 +78,7 @@ jobs:
             desktop/release/*.exe
             desktop/release/*.dmg
             desktop/release/*.zip
-            desktop/release/*.yml
+            desktop/release/latest*.yml
 
   create-release:
     name: Create GitHub Release (attach binaries)
@@ -115,5 +115,5 @@ jobs:
             release-artifacts/**/*.exe
             release-artifacts/**/*.dmg
             release-artifacts/**/*.zip
-            release-artifacts/**/*.yml
+            release-artifacts/**/latest*.yml
 
