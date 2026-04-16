@@ -14,7 +14,7 @@
     "prepare:icons": "node scripts/prepare-icons.mjs",
     "dist:linux": "npm run build:all && npm run prepare:icons && electron-builder --linux AppImage",
     "dist:win": "npm run build:all && npm run prepare:icons && node scripts/gen-win-ico.mjs && electron-builder --win nsis",
-    "dist:mac": "npm run build:all && npm run prepare:icons && electron-builder --mac dmg"
+    "dist:mac": "npm run build:all && npm run prepare:icons && node scripts/gen-mac-icns.mjs && electron-builder --mac dmg"
   },
   "keywords": [],
   "author": "",

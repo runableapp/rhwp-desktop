@@ -58,6 +58,14 @@
         text-decoration-thickness: 2px;
       }
 
+      .accent {
+        background: linear-gradient(90deg, var(--brand), var(--brand-2), var(--brand-3));
+        -webkit-background-clip: text;
+        background-clip: text;
+        color: transparent;
+        font-weight: 800;
+      }
+
       .wrap {
         max-width: 1080px;
         margin: 0 auto;
@@ -236,6 +244,7 @@
       .btn .btn-main {
         font-weight: 650;
         letter-spacing: 0.1px;
+        white-space: nowrap;
       }
       .btn .btn-sub {
         font-size: 12.5px;
@@ -250,17 +259,27 @@
           rgba(251, 113, 133, 0.16)
         );
       }
+      .btn.secondary {
+        background: var(--panel);
+      }
+      .btn.icon {
+        flex-direction: row;
+        align-items: center;
+        gap: 10px;
+      }
+      .btn.icon svg {
+        width: 18px;
+        height: 18px;
+        flex: 0 0 auto;
+      }
       .btn:hover {
         background: var(--panel-2);
       }
 
       .shot {
         display: grid;
-      }
-      .shot a {
-        display: block;
-        text-decoration: none;
-        cursor: zoom-in;
+        max-width: 920px;
+        margin: 0 auto;
       }
       .shot img {
         width: 100%;
@@ -331,7 +350,7 @@
         border: 0;
         border-top: 1px solid var(--border);
         opacity: 0.6;
-        margin: 12px auto 14px;
+        margin: 6px auto 14px;
         max-width: 720px;
       }
       footer .license {
@@ -342,14 +361,53 @@
         justify-content: center;
         text-align: center;
       }
+      footer .tm-note {
+        margin: 14px 0 6px;
+        max-width: 720px;
+        color: rgba(12, 12, 26, 0.45);
+        font-size: 11.5px;
+        line-height: 1.35;
+        text-align: left;
+      }
+      footer .tm-note a {
+        color: inherit;
+        text-decoration: none;
+        border-bottom: 1px dotted rgba(12, 12, 26, 0.28);
+      }
+      footer .tm-note a:hover {
+        border-bottom-style: solid;
+      }
       .download-row {
         margin-top: 18px;
         display: flex;
         justify-content: center;
+        gap: 10px;
       }
       .download-row .btn {
         align-items: center;
         text-align: center;
+      }
+      .hero-copy h2 a.footnote-ref {
+        color: inherit;
+        text-decoration: none;
+        border-bottom: 1px dotted rgba(12, 12, 26, 0.22);
+      }
+      .hero-copy h2 a.footnote-ref:hover {
+        border-bottom-style: solid;
+      }
+      .local-url {
+        margin-top: 10px;
+        display: flex;
+        justify-content: center;
+        color: var(--dim);
+        font-size: 12.5px;
+      }
+      .local-url a {
+        text-decoration: none;
+        border-bottom: 1px dashed rgba(16, 16, 34, 0.22);
+      }
+      .local-url a:hover {
+        border-bottom-style: solid;
       }
       footer code {
         font-family: var(--mono);
@@ -371,11 +429,19 @@
                 <span>HWP 뷰어/에디터</span>
               </div>
             </div>
-            <h2>아래아 한글 호환, 무료 한글 워드프로세서를 데스크톱에서.</h2>
+            <h2 id="ah-title">
+              <a class="footnote-ref" href="#tm-footnote-1">아래아 한글<sup>™</sup></a> 호환, 무료 한글 워드프로세서를 데스크톱에서.
+            </h2>
             <p>
-              <b>RHWP Desktop</b>은
+              <b><span class="accent">RHWP Desktop</span></b>은
               <b><a href="https://github.com/edwardkim/rhwp" target="_blank" rel="noreferrer">rhwp 프로젝트</a></b>를
-              Windows / macOS / Linux에서 데스크톱 앱으로 쓰기 위한 가벼운 래퍼입니다.
+              Windows / macOS / Linux에서 데스크톱 앱으로 쓰기 위한 가벼운 래퍼입니다. (<a
+                id="local-preview-word"
+                href="http://127.0.0.1:3001/docs/index.html"
+                target="_blank"
+                rel="noreferrer"
+                >로컬 미리보기</a
+              >)
             </p>
             <div class="version-line" aria-label="versions">
               기반 버전: rhwp WASM 코어 <code>0.7.2</code> · rhwp-studio UI <code>0.7.2</code>
@@ -383,9 +449,7 @@
           </div>
 
           <div class="shot">
-            <a href="./rhwp-desktop.webp" target="_blank" rel="noreferrer">
-              <img src="./rhwp-desktop.webp" alt="rhwp-desktop 스크린샷 (클릭하여 원본 보기)" />
-            </a>
+            <img src="./rhwp-desktop.webp" alt="rhwp-desktop 스크린샷" />
           </div>
         </section>
 
@@ -398,10 +462,27 @@
           >
             <span class="btn-main">다운로드</span>
           </a>
+          <a
+            class="btn secondary icon"
+            href="https://github.com/runableapp/rhwp-desktop"
+            target="_blank"
+            rel="noreferrer"
+            aria-label="GitHub repository"
+          >
+            <svg viewBox="0 0 16 16" aria-hidden="true" fill="currentColor">
+              <path
+                d="M8 0C3.58 0 0 3.58 0 8c0 3.54 2.29 6.53 5.47 7.59.4.07.55-.17.55-.38 0-.19-.01-.82-.01-1.49-2.01.37-2.53-.49-2.69-.94-.09-.23-.48-.94-.82-1.13-.28-.15-.68-.52-.01-.53.63-.01 1.08.58 1.23.82.72 1.21 1.87.87 2.33.66.07-.52.28-.87.51-1.07-1.78-.2-3.64-.89-3.64-3.95 0-.87.31-1.59.82-2.15-.08-.2-.36-1.02.08-2.12 0 0 .67-.21 2.2.82.64-.18 1.32-.27 2-.27s1.36.09 2 .27c1.53-1.04 2.2-.82 2.2-.82.44 1.1.16 1.92.08 2.12.51.56.82 1.27.82 2.15 0 3.07-1.87 3.75-3.65 3.95.29.25.54.73.54 1.48 0 1.07-.01 1.93-.01 2.2 0 .21.15.46.55.38A8.013 8.013 0 0 0 16 8c0-4.42-3.58-8-8-8Z"
+              />
+            </svg>
+            <span class="btn-main">소스코드 보기</span>
+          </a>
         </div>
       </main>
 
       <footer>
+        <div class="tm-note" id="tm-footnote-1">
+          1. 아래아 한글은 (주)한글과컴퓨터의 상표입니다. (<a href="#ah-title">위로</a>)
+        </div>
         <hr />
         <div class="thanks" aria-label="thanks">
           <a href="./runable-thankyou-ko.webp" target="_blank" rel="noreferrer">
