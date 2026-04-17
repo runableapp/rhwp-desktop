@@ -14,6 +14,8 @@ declare global {
         | { ok: true; path: string }
         | { ok: false; reason: 'cancelled' | 'error'; message?: string }
       >;
+      /** Open URL in the system default browser (desktop shell). */
+      openExternal: (url: string) => Promise<void>;
     };
   }
 }

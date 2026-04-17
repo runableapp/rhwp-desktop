@@ -271,10 +271,24 @@
   line-height: 1.2;
 }
 
-.about-product-name-ko {
+.about-product-name-ko-row {
+  display: flex;
+  flex-wrap: wrap;
+  align-items: baseline;
+  justify-content: center;
+  gap: 8px 10px;
   font-size: var(--font-size-md);
   color: #4a5a8a;
   margin-bottom: 6px;
+  line-height: 1.4;
+  max-width: 100%;
+}
+
+.about-external-link {
+  color: var(--color-link, #2563eb);
+  text-decoration: underline;
+  word-break: break-all;
+  font-size: var(--font-size-sm);
 }
 
 .about-wrap-desc {
@@ -293,11 +307,6 @@
   text-align: center;
   line-height: 1.4;
   word-break: break-all;
-}
-
-.about-rhwp-repo a {
-  color: var(--color-link, #2563eb);
-  text-decoration: underline;
 }
 
 .about-license-title {

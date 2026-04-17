@@ -12,5 +12,8 @@ contextBridge.exposeInMainWorld('hwpDesktop', {
   openFile: async (): Promise<OpenFileResult> => ipcRenderer.invoke('hwp:openFile'),
   saveFile: async (suggestedName: string, bytes: Uint8Array): Promise<SaveFileResult> =>
     ipcRenderer.invoke('hwp:saveFile', { suggestedName, bytes }),
+  openExternal: async (url: string): Promise<void> => {
+    await ipcRenderer.invoke('shell:openExternal', url);
+  },
 });
 

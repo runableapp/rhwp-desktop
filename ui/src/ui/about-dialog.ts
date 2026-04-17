@@ -6,6 +6,22 @@
 import { ModalDialog } from './dialog';
 
 /** 오픈소스 라이선스 표에 나열하는 구성 요소 (rhwp 및 의존 크레이트) */
+function openUrlInExternalBrowser(url: string): void {
+  if (window.hwpDesktop?.openExternal) {
+    void window.hwpDesktop.openExternal(url);
+  } else {
+    window.open(url, '_blank', 'noopener,noreferrer');
+  }
+}
+
+/** Ensures links open in the system browser (Electron) or a new tab (web). */
+function wireExternalLink(anchor: HTMLAnchorElement): void {
+  anchor.addEventListener('click', (e) => {
+    e.preventDefault();
+    openUrlInExternalBrowser(anchor.href);
+  });
+}
+
 const THIRD_PARTY_LICENSES = [
   { name: 'rhwp', license: 'MIT' },
   { name: 'wasm-bindgen', license: 'MIT / Apache-2.0' },
@@ -39,10 +55,18 @@ export class AboutDialog extends ModalDialog {
     titleRow.appendChild(versionInline);
     body.appendChild(titleRow);
 
-    const titleKo = document.createElement('div');
-    titleKo.className = 'about-product-name-ko';
-    titleKo.textContent = 'rhwp 데스크톱 래퍼';
-    body.appendChild(titleKo);
+    const titleKoRow = document.createElement('div');
+    titleKoRow.className = 'about-product-name-ko-row';
+    const titleKoLabel = document.createElement('span');
+    titleKoLabel.textContent = 'rhwp 데스크톱 래퍼';
+    titleKoRow.appendChild(titleKoLabel);
+    const desktopRepo = document.createElement('a');
+    desktopRepo.href = 'https://github.com/runableapp/rhwp-desktop';
+    desktopRepo.textContent = 'https://github.com/runableapp/rhwp-desktop';
+    desktopRepo.className = 'about-external-link';
+    wireExternalLink(desktopRepo);
+    titleKoRow.appendChild(desktopRepo);
+    body.appendChild(titleKoRow);
 
     const wrapDesc = document.createElement('div');
     wrapDesc.className = 'about-wrap-desc';
@@ -56,8 +80,8 @@ export class AboutDialog extends ModalDialog {
     const rhwpGh = document.createElement('a');
     rhwpGh.href = 'https://github.com/edwardkim/rhwp';
     rhwpGh.textContent = 'https://github.com/edwardkim/rhwp';
-    rhwpGh.target = '_blank';
-    rhwpGh.rel = 'noopener noreferrer';
+    rhwpGh.className = 'about-external-link';
+    wireExternalLink(rhwpGh);
     rhwpRepo.appendChild(rhwpGh);
     body.appendChild(rhwpRepo);
 

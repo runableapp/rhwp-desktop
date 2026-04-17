@@ -1,4 +1,4 @@
-import { app, BrowserWindow, Menu, dialog, ipcMain, protocol } from 'electron';
+import { app, BrowserWindow, Menu, dialog, ipcMain, protocol, shell } from 'electron';
 import path from 'node:path';
 import fs from 'node:fs/promises';
 
@@ -86,7 +86,23 @@ async function createMainWindow(): Promise<void> {
     await win.loadURL('app://./index.html');
     if (OPEN_DEVTOOLS) win.webContents.openDevTools({ mode: 'detach' });
   }
+
+  // http(s) links intended for a new window/tab open in the system default browser.
+  win.webContents.setWindowOpenHandler((details) => {
+    const url = details.url;
+    if (url.startsWith('http:') || url.startsWith('https:')) {
+      void shell.openExternal(url);
+    }
+    return { action: 'deny' };
+  });
 }
+
+ipcMain.handle('shell:openExternal', async (_evt, url: unknown) => {
+  if (typeof url !== 'string' || (!url.startsWith('http:') && !url.startsWith('https:'))) {
+    return;
+  }
+  await shell.openExternal(url);
+});
 
 ipcMain.handle('hwp:openFile', async () => {
   try {
