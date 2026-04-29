@@ -5,6 +5,15 @@ import fs from 'node:fs/promises';
 const UI_DEV_SERVER_URL = process.env.UI_DEV_SERVER_URL;
 const OPEN_DEVTOOLS = process.env.OPEN_DEVTOOLS === '1';
 
+// AppImage runs from a FUSE mount where the Chromium SUID sandbox helper
+// (chrome-sandbox) cannot be root-owned/mode 4755. Without this switch Electron
+// will abort on many distros with:
+// "The SUID sandbox helper binary was found, but is not configured correctly."
+// If you want to force-enable sandboxing, set RHWP_ENABLE_CHROMIUM_SANDBOX=1.
+if (process.platform === 'linux' && process.env.RHWP_ENABLE_CHROMIUM_SANDBOX !== '1') {
+  app.commandLine.appendSwitch('no-sandbox');
+}
+
 // Needed so fetch()/import.meta.url work correctly for WASM/assets in prod.
 protocol.registerSchemesAsPrivileged([
   {
