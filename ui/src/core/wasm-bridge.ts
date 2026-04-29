@@ -1,4 +1,4 @@
-import init, { HwpDocument, version } from '@wasm/rhwp.js';
+import init, { HwpDocument, version } from '@rhwp/core';
 import type { DocumentInfo, PageInfo, PageDef, SectionDef, CursorRect, HitTestResult, LineInfo, TableDimensions, CellInfo, CellBbox, CellProperties, TableProperties, DocumentPosition, MoveVerticalResult, SelectionRect, CharProperties, ParaProperties, CellPathEntry, NavContextEntry, FieldInfoResult, BookmarkInfo } from './types';
 import { resolveFont, fontFamilyWithFallback } from './font-substitution';
 import { REGISTERED_FONTS } from './font-loader';

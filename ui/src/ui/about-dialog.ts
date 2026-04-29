@@ -51,7 +51,7 @@ export class AboutDialog extends ModalDialog {
     titleRow.appendChild(titleMain);
     const versionInline = document.createElement('span');
     versionInline.className = 'about-version-inline';
-    versionInline.textContent = 'Version 1.0';
+    versionInline.textContent = 'Version';
     titleRow.appendChild(versionInline);
     body.appendChild(titleRow);
 
@@ -114,12 +114,35 @@ export class AboutDialog extends ModalDialog {
     return body;
   }
 
+  private async hydrateVersion(): Promise<void> {
+    const el = this.dialog.querySelector<HTMLElement>('.about-version-inline');
+    if (!el) return;
+
+    // Desktop: show the actual packaged version (desktop/package.json via Electron app.getVersion()).
+    if (window.hwpDesktop?.getVersion) {
+      try {
+        const v = await window.hwpDesktop.getVersion();
+        el.textContent = `Version ${v}`;
+        return;
+      } catch {
+        // fall through
+      }
+    }
+
+    // Web (or fallback): show UI build version (Vite define in ui/vite.config.ts)
+    const uiVersion = (globalThis as any).__APP_VERSION__ as string | undefined;
+    if (uiVersion) {
+      el.textContent = `Version ${uiVersion}`;
+    }
+  }
+
   protected onConfirm(): void {
     // 정보 표시 전용 — 확인 동작 없음
   }
 
   override show(): void {
     super.show();
+    void this.hydrateVersion();
     // footer를 "닫기" 버튼 하나로 교체
     const footer = this.dialog.querySelector('.dialog-footer');
     if (footer) {

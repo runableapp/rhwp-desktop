@@ -13,8 +13,7 @@
     "lib": ["ES2022", "DOM", "DOM.Iterable"],
     "types": ["chrome"],
     "paths": {
-      "@/*": ["./src/*"],
-      "@wasm/*": ["../core/pkg/*"]
+      "@/*": ["./src/*"]
     }
   },
   "include": ["src"]

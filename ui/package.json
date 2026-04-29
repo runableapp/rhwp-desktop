@@ -14,5 +14,8 @@
     "puppeteer-core": "^24.40.0",
     "typescript": "^6.0.2",
     "vite": "^8.0.8"
+  },
+  "dependencies": {
+    "@rhwp/core": "^0.7.8"
   }
 }

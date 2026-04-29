@@ -10,7 +10,7 @@
 
 ## 기반 프로젝트 / 버전
 
-- **rhwp WASM 코어**: `0.7.2` (동기화 위치: `core/pkg/`)
+- **rhwp WASM 코어**: npm 패키지 `@rhwp/core` (버전은 `ui/package.json` 참고)
 - **rhwp-studio UI**: `0.7.2` (소스 위치: `ui/`)
 
 ## 라이선스
@@ -19,12 +19,12 @@ Copyright (c) 2026 Runable.app
 
 이 프로젝트는 `rhwp`와 동일하게 **MIT License**를 따릅니다(상속).  
 라이선스 전문은 저장소 루트의 `LICENSE` 파일을 참고하세요.  
-WASM 산출물 및 라이선스 고지는 `core/pkg/` 내 파일을 참조하세요.
+WASM 산출물은 npm 의존성(`@rhwp/core`)을 통해 포함되며, 해당 패키지의 라이선스/고지는 `node_modules/@rhwp/core/`를 참조하세요.
 
 ## 폴더 구조
 
 - `ui/`: rhwp-studio (Vite)
-- `core/pkg/`: rhwp WASM 패키지(`rhwp_bg.wasm`, `rhwp.js`, `rhwp.d.ts` 등)
+- `core/pkg/`: (레거시) rhwp WASM 패키지 vendor 디렉토리 — 현재 UI는 npm `@rhwp/core`를 사용
 - `desktop/`: Electron 앱(파일 열기/저장 IPC 포함)
 - `run-desktop.sh`: 빌드 후 Electron 실행 스크립트
 
@@ -46,13 +46,14 @@ cd hwp-editor
 
 결과 AppImage는 `desktop/release/` 아래에 생성됩니다.
 
-### WASM 코어(`core/pkg/`) 동기화가 필요한 경우
+### (레거시) WASM 코어(`core/pkg/`) 동기화가 필요한 경우
 
-`build.sh`는 `core/pkg/`에 이미 `rhwp` WASM 패키지(`rhwp_bg.wasm`, `rhwp.js`, `rhwp.d.ts` 등)가 준비되어 있다고 가정합니다. 아래 상황에서는 먼저 WASM 코어를 다시 빌드/동기화하세요.
+현재 기본 설정은 npm 의존성(`@rhwp/core`)을 사용하므로, 일반적으로 `core/pkg/` 동기화는 필요하지 않습니다.
 
-- `core/pkg/`가 비어있거나 누락된 경우 (초기 설정/클린 상태)
-- 외부 `rhwp` 체크아웃을 업데이트(브랜치/커밋 변경 포함)했고, 최신 WASM 코어를 반영하고 싶은 경우
-- `rhwp` 코어를 수정했는데 데스크톱 앱이 이전 동작을 유지하는 등 `core/pkg/`가 stale로 의심되는 경우
+다만 아래처럼 **vendor 방식**으로 운용하려면 `core/pkg/`를 다시 빌드/동기화하세요.
+
+- npm 설치 없이 완전 오프라인 빌드가 필요해서 `core/pkg/`를 포함시키는 경우
+- 특정 커밋/패치를 적용한 커스텀 `rhwp` WASM을 고정해서 배포하고 싶은 경우
 
 동기화 스크립트는 **외부 `rhwp` 저장소**에서 Docker로 WASM을 빌드한 뒤, 생성된 `pkg/`를 이 저장소의 `core/pkg/`로 복사합니다.
 
