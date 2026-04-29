@@ -9,6 +9,7 @@ export type SaveFileResult =
   | { ok: false; reason: 'cancelled' | 'error'; message?: string };
 
 contextBridge.exposeInMainWorld('hwpDesktop', {
+  getVersion: async (): Promise<string> => ipcRenderer.invoke('app:getVersion'),
   openFile: async (): Promise<OpenFileResult> => ipcRenderer.invoke('hwp:openFile'),
   saveFile: async (suggestedName: string, bytes: Uint8Array): Promise<SaveFileResult> =>
     ipcRenderer.invoke('hwp:saveFile', { suggestedName, bytes }),

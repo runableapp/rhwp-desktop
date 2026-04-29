@@ -3,6 +3,8 @@ export {};
 declare global {
   interface Window {
     hwpDesktop?: {
+      /** Desktop app version (from Electron `app.getVersion()`). */
+      getVersion: () => Promise<string>;
       openFile: () => Promise<
         | { ok: true; path: string; bytes: ArrayBuffer }
         | { ok: false; reason: 'cancelled' | 'error'; message?: string }

@@ -331,7 +331,8 @@ export class HwpCtrl {
  *
  * 사용:
  * ```javascript
- * const HwpCtrl = await createHwpCtrl({ wasmUrl: '/pkg/rhwp_bg.wasm' });
+ * // 기본값 권장: 번들러(Vite)가 @rhwp/core WASM 자산을 처리
+ * const HwpCtrl = await createHwpCtrl({});
  * HwpCtrl.Open(fileBlob);
  * ```
  */
@@ -346,7 +347,7 @@ export async function createHwpCtrl(options: {
     wasmDoc = options.wasmModule;
   } else {
     // 동적 로딩
-    const { default: init, HwpDocument } = await import('@wasm/rhwp.js');
+    const { default: init, HwpDocument } = await import('@rhwp/core');
     await init(options.wasmUrl);
     wasmDoc = HwpDocument.createEmpty();
   }

@@ -104,6 +104,10 @@ ipcMain.handle('shell:openExternal', async (_evt, url: unknown) => {
   await shell.openExternal(url);
 });
 
+ipcMain.handle('app:getVersion', () => {
+  return app.getVersion();
+});
+
 ipcMain.handle('hwp:openFile', async () => {
   try {
     const res = await dialog.showOpenDialog({

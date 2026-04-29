@@ -11,7 +11,6 @@ export default defineConfig({
   resolve: {
     alias: {
       '@': resolve(__dirname, 'src'),
-      '@wasm': resolve(__dirname, '..', 'core', 'pkg'),
     },
   },
   server: {
