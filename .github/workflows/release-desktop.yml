@@ -32,11 +32,12 @@ jobs:
         run: curl https://rustwasm.github.io/wasm-pack/installer/init.sh -sSf | sh
 
       - name: Sync latest rhwp (WASM + UI)
+        working-directory: ${{ github.workspace }}
         env:
           GIT_LFS_SKIP_SMUDGE: "1"
         run: |
-          chmod +x ./scripts/build-rhwp-wasm-and-sync.sh
-          RHWP_BUILD_METHOD=wasm-pack ./scripts/build-rhwp-wasm-and-sync.sh
+          chmod +x "${GITHUB_WORKSPACE}/scripts/build-rhwp-wasm-and-sync.sh"
+          RHWP_BUILD_METHOD=wasm-pack "${GITHUB_WORKSPACE}/scripts/build-rhwp-wasm-and-sync.sh"
 
       - name: Install Linux build dependencies
         if: runner.os == 'Linux'
