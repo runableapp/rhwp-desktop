@@ -42,6 +42,9 @@ desktop/release/
 desktop/.webpack/
 desktop/.electron/
 
+# Upstream rhwp clone (sync script)
+.cache/
+
 # WASM build artifacts (if generated)
 core/target/
 core/pkg/.cache/

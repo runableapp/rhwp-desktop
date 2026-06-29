@@ -1,9 +1,11 @@
 import { ModalDialog } from './dialog';
+import { appendSvgMarkup } from './dom-utils';
 import type { WasmBridge } from '@/core/wasm-bridge';
 import type { PageDef } from '@/core/types';
 import type { EventBus } from '@/core/event-bus';
 
 const HWPUNIT_PER_MM = 7200 / 25.4; // ≈283.46
+const PAPER_PRESET_TOLERANCE_HU = 3;
 
 function hwpunitToMm(hu: number): number {
   return Math.round(hu * 25.4 / 7200 * 10) / 10; // 소수 1자리
@@ -11,6 +13,21 @@ function hwpunitToMm(hu: number): number {
 
 function mmToHwpunit(mm: number): number {
   return Math.round(mm * HWPUNIT_PER_MM);
+}
+
+function samePaperSize(a: number, b: number): boolean {
+  return Math.abs(a - b) <= PAPER_PRESET_TOLERANCE_HU;
+}
+
+function matchesPaperPreset(
+  width: number, height: number,
+  presetWidth: number, presetHeight: number,
+): boolean {
+  return (
+    samePaperSize(width, presetWidth) && samePaperSize(height, presetHeight)
+  ) || (
+    samePaperSize(width, presetHeight) && samePaperSize(height, presetWidth)
+  );
 }
 
 /** 용지 프리셋 (이름 → [폭, 길이] HWPUNIT) */
@@ -25,8 +42,8 @@ const PAPER_PRESETS: [string, number, number][] = [
 
 /** 용지 방향 SVG 아이콘 (세로/가로) */
 const ORIENT_ICONS: Record<string, string> = {
-  portrait: `<svg width="28" height="36" viewBox="0 0 28 36"><rect x="1" y="1" width="26" height="34" rx="2" fill="#fff" stroke="#748bc9" stroke-width="1.5"/><line x1="6" y1="8" x2="22" y2="8" stroke="#aab" stroke-width="1.2"/><line x1="6" y1="12" x2="22" y2="12" stroke="#aab" stroke-width="1.2"/><line x1="6" y1="16" x2="18" y2="16" stroke="#aab" stroke-width="1.2"/></svg>`,
-  landscape: `<svg width="36" height="28" viewBox="0 0 36 28"><rect x="1" y="1" width="34" height="26" rx="2" fill="#fff" stroke="#748bc9" stroke-width="1.5"/><line x1="6" y1="7" x2="30" y2="7" stroke="#aab" stroke-width="1.2"/><line x1="6" y1="11" x2="30" y2="11" stroke="#aab" stroke-width="1.2"/><line x1="6" y1="15" x2="24" y2="15" stroke="#aab" stroke-width="1.2"/></svg>`,
+  portrait: `<svg xmlns="http://www.w3.org/2000/svg" class="orient-icon orient-icon-portrait" width="28" height="36" viewBox="0 0 28 36" aria-hidden="true" focusable="false"><rect x="1" y="1" width="26" height="34" rx="2" fill="#fff" stroke="#748bc9" stroke-width="1.5"/><line x1="6" y1="8" x2="22" y2="8" stroke="#aab" stroke-width="1.2"/><line x1="6" y1="12" x2="22" y2="12" stroke="#aab" stroke-width="1.2"/><line x1="6" y1="16" x2="18" y2="16" stroke="#aab" stroke-width="1.2"/></svg>`,
+  landscape: `<svg xmlns="http://www.w3.org/2000/svg" class="orient-icon orient-icon-landscape" width="40" height="28" viewBox="0 0 40 28" aria-hidden="true" focusable="false"><rect x="1" y="1" width="38" height="26" rx="2" fill="#fff" stroke="#748bc9" stroke-width="1.5"/><line x1="7" y1="7" x2="33" y2="7" stroke="#aab" stroke-width="1.2"/><line x1="7" y1="11" x2="33" y2="11" stroke="#aab" stroke-width="1.2"/><line x1="7" y1="15" x2="29" y2="15" stroke="#aab" stroke-width="1.2"/><line x1="7" y1="19" x2="23" y2="19" stroke="#c5cce0" stroke-width="1.1"/></svg>`,
 };
 
 /** 제본 SVG 아이콘 (한쪽/맞쪽/위로) */
@@ -224,7 +241,7 @@ export class PageSetupDialog extends ModalDialog {
     if (pd.landscape) { [w, h] = [h, w]; }
 
     const matched = PAPER_PRESETS.find(([, pw, ph]) =>
-      (pw === pd.width && ph === pd.height) || (pw === pd.height && ph === pd.width)
+      matchesPaperPreset(pd.width, pd.height, pw, ph)
     );
     this.paperSelect.value = matched ? matched[0] : 'custom';
     this.widthInput.value = hwpunitToMm(w).toFixed(1);
@@ -344,7 +361,7 @@ export class PageSetupDialog extends ModalDialog {
 
     const iconWrap = document.createElement('span');
     iconWrap.className = 'icon-radio-icon';
-    iconWrap.innerHTML = svgHtml;
+    appendSvgMarkup(iconWrap, svgHtml);
 
     const text = document.createElement('span');
     text.className = 'icon-radio-text';

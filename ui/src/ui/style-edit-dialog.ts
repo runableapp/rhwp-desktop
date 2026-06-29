@@ -185,7 +185,7 @@ export class StyleEditDialog extends ModalDialog {
 
   private populateNextStyleSelect(): void {
     if (!this.nextStyleSelect) return;
-    this.nextStyleSelect.innerHTML = '';
+    this.nextStyleSelect.replaceChildren();
     try {
       const styles = this.wasm.getStyleList();
       for (const s of styles) {

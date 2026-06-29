@@ -6,6 +6,11 @@ import { CanvasPool } from './canvas-pool';
 import { PageRenderer } from './page-renderer';
 import { ViewportManager } from './viewport-manager';
 import { CoordinateSystem } from './coordinate-system';
+import type { CanvasKitLayerRenderer } from './canvaskit-renderer';
+import { clampRenderScale, type RenderBackend } from './render-backend';
+import type { LayerRenderProfile } from '@/core/types';
+import { applyGridOverlayBox, createGridClipCornerOverlay, createGridOverlay } from './grid-overlay';
+import { getGridViewSettings } from './grid-settings';
 
 export class CanvasView {
   private virtualScroll: VirtualScroll;
@@ -23,10 +28,13 @@ export class CanvasView {
     private container: HTMLElement,
     private wasm: WasmBridge,
     private eventBus: EventBus,
+    renderBackend: RenderBackend = 'canvas2d',
+    renderProfile: LayerRenderProfile = 'screen',
+    canvaskitRenderer: CanvasKitLayerRenderer | null = null,
   ) {
     this.virtualScroll = new VirtualScroll();
     this.canvasPool = new CanvasPool();
-    this.pageRenderer = new PageRenderer(wasm);
+    this.pageRenderer = new PageRenderer(wasm, renderBackend, renderProfile, canvaskitRenderer);
     this.viewportManager = new ViewportManager(eventBus);
     this.coordinateSystem = new CoordinateSystem(this.virtualScroll);
 
@@ -37,7 +45,10 @@ export class CanvasView {
       eventBus.on('viewport-scroll', () => this.updateVisiblePages()),
       eventBus.on('viewport-resize', () => this.onViewportResize()),
       eventBus.on('zoom-changed', (zoom) => this.onZoomChanged(zoom as number)),
+      eventBus.on('document-page-invalidated', (payload) => this.refreshInvalidatedPage(payload)),
       eventBus.on('document-changed', () => this.refreshPages()),
+      eventBus.on('document-view-changed', () => this.refreshPages()),
+      eventBus.on('grid-view-changed', () => this.refreshGridOverlays()),
     );
   }
 
@@ -103,6 +114,8 @@ export class CanvasView {
     for (const pageIdx of this.canvasPool.activePages) {
       if (!prefetchSet.has(pageIdx)) {
         this.pageRenderer.cancelReRender(pageIdx);
+        this.pageRenderer.removePageLayers(this.scrollContent, pageIdx);
+        this.removeGridOverlay(pageIdx);
         this.canvasPool.release(pageIdx);
       }
     }
@@ -131,23 +144,27 @@ export class CanvasView {
   /** 단일 페이지를 렌더링한다 */
   private renderPage(pageIdx: number): void {
     const canvas = this.canvasPool.acquire(pageIdx);
+    if (!canvas.parentElement) {
+      this.scrollContent.appendChild(canvas);
+    }
+    if (!this.renderCanvas(pageIdx, canvas)) {
+      this.canvasPool.release(pageIdx);
+    }
+  }
+
+  /** 기존 canvas를 유지한 채 페이지 내용을 다시 그린다. */
+  private renderCanvas(pageIdx: number, canvas: HTMLCanvasElement): boolean {
     const zoom = this.viewportManager.getZoom();
     const rawDpr = window.devicePixelRatio || 1;
 
-    // iOS WebKit Canvas 최대 크기 제한 (64MP = 67,108,864 pixels)
-    // 물리 크기 = pageSize × zoom × dpr 가 제한을 초과하면 dpr을 낮춘다
     const pageInfo = this.pages[pageIdx];
-    const MAX_CANVAS_PIXELS = 67108864;
-    let dpr = rawDpr;
-    if (pageInfo) {
-      const physW = pageInfo.width * zoom * dpr;
-      const physH = pageInfo.height * zoom * dpr;
-      if (physW * physH > MAX_CANVAS_PIXELS) {
-        dpr = Math.sqrt(MAX_CANVAS_PIXELS / (pageInfo.width * zoom * pageInfo.height * zoom));
-        dpr = Math.max(1, Math.floor(dpr)); // 최소 1, 정수로 내림
-      }
+    if (!pageInfo) {
+      console.error(`[CanvasView] 페이지 ${pageIdx} 정보가 없습니다`);
+      return false;
     }
-    const renderScale = zoom * dpr;
+    // iOS/WebKit과 GPU surface가 감당하기 어려운 물리 픽셀 수를 중앙 정책으로 제한한다.
+    const renderScale = clampRenderScale(pageInfo, zoom * rawDpr);
+    const dpr = renderScale / (zoom > 0 ? zoom : 1);
 
     // Canvas를 DOM에 추가하고 위치를 설정한다
     canvas.style.top = `${this.virtualScroll.getPageOffset(pageIdx)}px`;
@@ -162,20 +179,21 @@ export class CanvasView {
       canvas.style.transform = 'translateX(-50%)';
     }
 
-    this.scrollContent.appendChild(canvas);
-
     // WASM이 Canvas 크기를 자동 설정한다 (물리 픽셀 = 페이지크기 × zoom × DPR)
     try {
-      this.pageRenderer.renderPage(pageIdx, canvas, renderScale);
+      this.pageRenderer.renderPage(pageIdx, canvas, renderScale, zoom, dpr);
     } catch (e) {
       console.error(`[CanvasView] 페이지 ${pageIdx} 렌더링 실패:`, e);
-      this.canvasPool.release(pageIdx);
-      return;
+      this.pageRenderer.removePageLayers(this.scrollContent, pageIdx);
+      this.removeGridOverlay(pageIdx);
+      return false;
     }
 
     // CSS 표시 크기 = 물리 픽셀 / DPR (= 페이지크기 × zoom)
     canvas.style.width = `${canvas.width / dpr}px`;
     canvas.style.height = `${canvas.height / dpr}px`;
+    this.renderGridOverlay(pageIdx, canvas);
+    return true;
   }
 
   /** 뷰포트 리사이즈 처리 */
@@ -192,7 +210,7 @@ export class CanvasView {
 
     if (wasGrid || isGrid) {
       // 그리드 관련 변경 시 전체 재렌더링
-      this.canvasPool.releaseAll();
+      this.releaseAllRenderedPages();
       this.pageRenderer.cancelAll();
     }
     this.updateVisiblePages();
@@ -222,7 +240,7 @@ export class CanvasView {
     this.viewportManager.setScrollTop(newCenter - vpHeight / 2);
 
     // 모든 Canvas 재렌더링
-    this.canvasPool.releaseAll();
+    this.releaseAllRenderedPages();
     this.pageRenderer.cancelAll();
     this.updateVisiblePages();
 
@@ -247,23 +265,112 @@ export class CanvasView {
     this.recalcLayout();
 
     // 보이는 페이지 재렌더링
-    this.canvasPool.releaseAll();
+    this.releaseAllRenderedPages();
     this.pageRenderer.cancelAll();
     this.updateVisiblePages();
+  }
+
+  /** 텍스트 입력처럼 좁은 변경은 page info 재수집 없이 해당 페이지 canvas만 다시 그린다. */
+  private refreshInvalidatedPage(payload: unknown): void {
+    if (this.pages.length === 0) return;
+
+    const pageIndex =
+      typeof payload === 'object' && payload !== null && 'pageIndex' in payload
+        ? Number((payload as { pageIndex?: unknown }).pageIndex)
+        : Number(payload);
+
+    if (!Number.isInteger(pageIndex) || pageIndex < 0) {
+      this.refreshPages();
+      return;
+    }
+
+    const pageCount = this.wasm.pageCount;
+    if (pageCount !== this.pages.length || pageIndex >= pageCount) {
+      this.refreshPages();
+      return;
+    }
+
+    const canvas = this.canvasPool.getCanvas(pageIndex);
+    if (!canvas) {
+      this.updateVisiblePages();
+      return;
+    }
+
+    if (!this.renderCanvas(pageIndex, canvas)) {
+      this.canvasPool.release(pageIndex);
+      this.updateVisiblePages();
+    }
   }
 
   /** 리소스를 정리한다 */
   private reset(): void {
     this.pageRenderer.cancelAll();
-    this.canvasPool.releaseAll();
+    this.releaseAllRenderedPages();
     this.currentVisiblePages = [];
     this.pages = [];
-    this.scrollContent.innerHTML = '';
+    this.scrollContent.replaceChildren();
+  }
+
+  private releaseAllRenderedPages(): void {
+    this.pageRenderer.resetImageRetryState();
+    this.pageRenderer.removeAllPageLayers(this.scrollContent);
+    this.removeAllGridOverlays();
+    this.canvasPool.releaseAll();
+  }
+
+  private refreshGridOverlays(): void {
+    this.removeAllGridOverlays();
+    for (const pageIdx of this.canvasPool.activePages) {
+      const canvas = this.canvasPool.getCanvas(pageIdx);
+      if (canvas) this.renderGridOverlay(pageIdx, canvas);
+    }
+  }
+
+  private renderGridOverlay(pageIdx: number, canvas: HTMLCanvasElement): void {
+    this.removeGridOverlay(pageIdx);
+    const settings = getGridViewSettings();
+    if (!settings.visible) return;
+
+    const pageInfo = this.pages[pageIdx];
+    if (!pageInfo) return;
+
+    const overlay = createGridOverlay(
+      pageIdx,
+      pageInfo,
+      this.viewportManager.getZoom(),
+      settings,
+    );
+    applyGridOverlayBox(overlay, canvas);
+    this.scrollContent.appendChild(overlay);
+
+    const clipCorners = createGridClipCornerOverlay(
+      pageIdx,
+      pageInfo,
+      this.viewportManager.getZoom(),
+      settings,
+    );
+    if (clipCorners) {
+      applyGridOverlayBox(clipCorners, canvas);
+      this.scrollContent.appendChild(clipCorners);
+    }
+  }
+
+  private removeGridOverlay(pageIdx: number): void {
+    this.scrollContent
+      .querySelectorAll(`[data-rhwp-grid-page="${pageIdx}"]`)
+      .forEach((el) => el.remove());
+  }
+
+  private removeAllGridOverlays(): void {
+    this.scrollContent
+      .querySelectorAll('[data-rhwp-grid-page]')
+      .forEach((el) => el.remove());
   }
 
   /** 전체 정리 */
   dispose(): void {
     this.reset();
+    this.pageRenderer.dispose();
     this.viewportManager.detach();
     for (const unsub of this.unsubscribers) {
       unsub();
@@ -277,6 +384,10 @@ export class CanvasView {
 
   getViewportManager(): ViewportManager {
     return this.viewportManager;
+  }
+
+  getRenderBackend(): RenderBackend {
+    return this.pageRenderer.getBackend();
   }
 
   getCoordinateSystem(): CoordinateSystem {

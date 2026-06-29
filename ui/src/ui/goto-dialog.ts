@@ -16,6 +16,7 @@ export class GotoDialog extends ModalDialog {
   private tabBtnBookmark!: HTMLButtonElement;
   private bookmarkList!: HTMLElement;
   private selectedBookmark: BookmarkInfo | null = null;
+  private pageEnterHandler: ((e: KeyboardEvent) => void) | null = null;
 
   constructor(services: CommandServices, tab?: 'page' | 'bookmark') {
     super('찾아가기', 300);
@@ -107,7 +108,7 @@ export class GotoDialog extends ModalDialog {
   }
 
   private refreshBookmarks(): void {
-    this.bookmarkList.innerHTML = '';
+    this.bookmarkList.replaceChildren();
     this.selectedBookmark = null;
     const bookmarks = this.services.wasm.getBookmarks();
     if (bookmarks.length === 0) {
@@ -164,6 +165,7 @@ export class GotoDialog extends ModalDialog {
 
   show(): void {
     super.show();
+    this.installPageEnterHandler();
     if (this.activeTab === 'page') {
       const ih = this.services.getInputHandler();
       if (ih) {
@@ -178,7 +180,33 @@ export class GotoDialog extends ModalDialog {
     }
   }
 
-  protected onConfirm(): void {
+  hide(): void {
+    this.removePageEnterHandler();
+    super.hide();
+  }
+
+  private installPageEnterHandler(): void {
+    if (this.pageEnterHandler) return;
+    this.pageEnterHandler = (e: KeyboardEvent) => {
+      if (this.activeTab !== 'page') return;
+      if (e.target !== this.pageInput) return;
+      if (e.key !== 'Enter' || e.altKey || e.ctrlKey || e.metaKey || e.isComposing) return;
+
+      e.preventDefault();
+      e.stopPropagation();
+      const shouldClose = this.onConfirm();
+      if (shouldClose !== false) this.hide();
+    };
+    document.addEventListener('keydown', this.pageEnterHandler, true);
+  }
+
+  private removePageEnterHandler(): void {
+    if (!this.pageEnterHandler) return;
+    document.removeEventListener('keydown', this.pageEnterHandler, true);
+    this.pageEnterHandler = null;
+  }
+
+  protected onConfirm(): void | boolean {
     if (this.activeTab === 'bookmark') {
       this.moveToBookmark();
       return;
@@ -189,14 +217,14 @@ export class GotoDialog extends ModalDialog {
 
     if (isNaN(pageNum) || pageNum < 1 || pageNum > totalPages) {
       this.statusLabel.textContent = `1~${totalPages} 범위의 쪽 번호를 입력하세요.`;
-      return;
+      return false;
     }
 
     const globalPage = pageNum - 1;
     const posResult = this.services.wasm.getPositionOfPage(globalPage);
     if (!posResult.ok) {
       this.statusLabel.textContent = '해당 쪽을 찾을 수 없습니다.';
-      return;
+      return false;
     }
 
     const ih = this.services.getInputHandler();

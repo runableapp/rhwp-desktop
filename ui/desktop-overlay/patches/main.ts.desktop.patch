@@ -1,0 +1,27 @@
+--- a/src/main.ts
++++ b/src/main.ts
+@@ -177,6 +177,7 @@
+     });
+
+     setupFileInput();
++    setupDesktopOpenHook();
+     setupZoomControls();
+     setupEventListeners();
+     setupGlobalShortcuts();
+@@ -259,6 +260,18 @@
+   });
+ }
+
++function setupDesktopOpenHook(): void {
++  // Electron: use OS file dialog instead of the hidden file input.
++  if (!window.hwpDesktop?.openFile) return;
++  eventBus.on('request-open-document', async () => {
++    const res = await window.hwpDesktop!.openFile();
++    if (!res.ok) return;
++    const name = res.path.split(/[\\/]/).pop() || 'document.hwp';
++    const file = new File([res.bytes], name);
++    await loadFile(file);
++  });
++}
++
+ function setupZoomControls(): void {

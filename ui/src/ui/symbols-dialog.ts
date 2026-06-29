@@ -5,6 +5,7 @@
  */
 import type { CommandServices } from '@/command/types';
 import { InsertTextCommand } from '@/engine/command';
+import { enableDialogDrag } from './dialog-drag';
 
 // ── 유니코드 블록 정의 ──
 
@@ -134,6 +135,7 @@ export class SymbolsDialog {
     closeBtn.addEventListener('click', () => this.hide());
     titleBar.appendChild(closeBtn);
     this.dialog.appendChild(titleBar);
+    enableDialogDrag(this.dialog, titleBar);
 
     // 본문
     const body = document.createElement('div');
@@ -253,7 +255,7 @@ export class SymbolsDialog {
   }
 
   private renderGrid(block: UnicodeBlock): void {
-    this.charGrid.innerHTML = '';
+    this.charGrid.replaceChildren();
     const count = block.end - block.start + 1;
     const rows = Math.ceil(count / COLS);
 
@@ -335,7 +337,7 @@ export class SymbolsDialog {
   }
 
   private updateRecent(): void {
-    this.recentGrid.innerHTML = '';
+    this.recentGrid.replaceChildren();
     const recents = this.getRecentChars();
     if (recents.length === 0) {
       const msg = document.createElement('span');

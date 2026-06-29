@@ -17,10 +17,10 @@ export function onClick(this: any, e: MouseEvent): void {
     const cr = sc.getBoundingClientRect();
     const cx = e.clientX - cr.left;
     const cy = e.clientY - cr.top;
-    const pi = this.virtualScroll.getPageAtY(cy);
+    const pi = this.virtualScroll.getPageAtPoint(cx, cy);
     const po = this.virtualScroll.getPageOffset(pi);
     const pw = this.virtualScroll.getPageWidth(pi);
-    const pl = (sc.clientWidth - pw) / 2;
+    const pl = this.virtualScroll.getPageLeftResolved(pi, sc.clientWidth);
     const pageX = (cx - pl) / zoom;
     const pageY = (cy - po) / zoom;
 
@@ -123,10 +123,10 @@ export function onClick(this: any, e: MouseEvent): void {
         const cr = sc.getBoundingClientRect();
         const cx = e.clientX - cr.left;
         const cy = e.clientY - cr.top;
-        const pi = this.virtualScroll.getPageAtY(cy);
+        const pi = this.virtualScroll.getPageAtPoint(cx, cy);
         const po = this.virtualScroll.getPageOffset(pi);
         const pw = this.virtualScroll.getPageWidth(pi);
-        const pl = (sc.clientWidth - pw) / 2;
+        const pl = this.virtualScroll.getPageLeftResolved(pi, sc.clientWidth);
         const px = (cx - pl) / zoom;
         const py = (cy - po) / zoom;
         try {
@@ -170,10 +170,10 @@ export function onClick(this: any, e: MouseEvent): void {
           const cr = sc.getBoundingClientRect();
           const cx = e.clientX - cr.left;
           const cy = e.clientY - cr.top;
-          const pi = this.virtualScroll.getPageAtY(cy);
+          const pi = this.virtualScroll.getPageAtPoint(cx, cy);
           const po = this.virtualScroll.getPageOffset(pi);
           const pw = this.virtualScroll.getPageWidth(pi);
-          const pl = (sc.clientWidth - pw) / 2;
+          const pl = this.virtualScroll.getPageLeftResolved(pi, sc.clientWidth);
           const px = (cx - pl) / zoom;
           const py = (cy - po) / zoom;
           // 합산 BBOX 계산
@@ -276,7 +276,7 @@ export function onClick(this: any, e: MouseEvent): void {
                 const zoom = this.viewportManager.getZoom();
                 const po = this.virtualScroll.getPageOffset(picBbox.pageIndex);
                 const pw = this.virtualScroll.getPageWidth(picBbox.pageIndex);
-                const pl = (sc.clientWidth - pw) / 2;
+                const pl = this.virtualScroll.getPageLeftResolved(picBbox.pageIndex, sc.clientWidth);
                 this.isLineEndpointDragging = true;
                 this.lineEndpointState = {
                   ref: { sec: ref.sec, ppi: ref.ppi, ci: ref.ci, type: ref.type },
@@ -293,7 +293,7 @@ export function onClick(this: any, e: MouseEvent): void {
                 const zoom = this.viewportManager.getZoom();
                 const po = this.virtualScroll.getPageOffset(picBbox.pageIndex);
                 const pw = this.virtualScroll.getPageWidth(picBbox.pageIndex);
-                const pl = (sc.clientWidth - pw) / 2;
+                const pl = this.virtualScroll.getPageLeftResolved(picBbox.pageIndex, sc.clientWidth);
                 // 도형 중심 (scroll-content 좌표)
                 const objCx = pl + (picBbox.x + picBbox.w / 2) * zoom;
                 const objCy = po + (picBbox.y + picBbox.h / 2) * zoom;
@@ -304,7 +304,7 @@ export function onClick(this: any, e: MouseEvent): void {
                 const startAngle = Math.atan2(cy - objCy, cx - objCx);
                 this.isPictureRotateDragging = true;
                 this.pictureRotateState = {
-                  ref: { sec: ref.sec, ppi: ref.ppi, ci: ref.ci, type: ref.type },
+                  ref: { sec: ref.sec, ppi: ref.ppi, ci: ref.ci, type: ref.type, cellPath: ref.cellPath, headerFooter: ref.headerFooter },
                   origAngle,
                   centerX: objCx,
                   centerY: objCy,
@@ -320,9 +320,12 @@ export function onClick(this: any, e: MouseEvent): void {
               this.isPictureResizeDragging = true;
               this.pictureResizeState = {
                 dir,
-                ref: { sec: ref.sec, ppi: ref.ppi, ci: ref.ci, type: ref.type },
+                ref: { sec: ref.sec, ppi: ref.ppi, ci: ref.ci, type: ref.type, cellPath: ref.cellPath, headerFooter: ref.headerFooter },
                 origWidth: props.width,
                 origHeight: props.height,
+                origHorzOffset: props.horzOffset,
+                origVertOffset: props.vertOffset,
+                rotationAngle: (props.rotationAngle ?? 0) as number,
                 startClientX: e.clientX,
                 startClientY: e.clientY,
                 pageIndex: picBbox.pageIndex,
@@ -348,10 +351,10 @@ export function onClick(this: any, e: MouseEvent): void {
             const cr = sc.getBoundingClientRect();
             const cx = e.clientX - cr.left;
             const cy = e.clientY - cr.top;
-            const pi = this.virtualScroll.getPageAtY(cy);
+            const pi = this.virtualScroll.getPageAtPoint(cx, cy);
             const po = this.virtualScroll.getPageOffset(pi);
             const pw = this.virtualScroll.getPageWidth(pi);
-            const pl = (sc.clientWidth - pw) / 2;
+            const pl = this.virtualScroll.getPageLeftResolved(pi, sc.clientWidth);
             const px = (cx - pl) / zoom;
             const py = (cy - po) / zoom;
             if (!e.shiftKey && pi === picBbox.pageIndex &&
@@ -363,7 +366,7 @@ export function onClick(this: any, e: MouseEvent): void {
                   e.preventDefault();
                   this.isPictureMoveDragging = true;
                   this.pictureMoveState = {
-                    ref: { sec: ref.sec, ppi: ref.ppi, ci: ref.ci, type: ref.type },
+                    ref: { sec: ref.sec, ppi: ref.ppi, ci: ref.ci, type: ref.type, cellPath: ref.cellPath, headerFooter: ref.headerFooter },
                     origHorzOffset: props.horzOffset,
                     origVertOffset: props.vertOffset,
                     startPageX: px, startPageY: py,
@@ -422,10 +425,10 @@ export function onClick(this: any, e: MouseEvent): void {
             const contentRect = scrollContent.getBoundingClientRect();
             const contentX = e.clientX - contentRect.left;
             const contentY = e.clientY - contentRect.top;
-            const pageIdx = this.virtualScroll.getPageAtY(contentY);
+            const pageIdx = this.virtualScroll.getPageAtPoint(contentX, contentY);
             const pageOffset = this.virtualScroll.getPageOffset(pageIdx);
             const pageDisplayWidth = this.virtualScroll.getPageWidth(pageIdx);
-            const pageLeft = (scrollContent.clientWidth - pageDisplayWidth) / 2;
+            const pageLeft = this.virtualScroll.getPageLeftResolved(pageIdx, scrollContent.clientWidth);
             const pageX = (contentX - pageLeft) / zoom;
             const pageY = (contentY - pageOffset) / zoom;
             const pageBboxes = bboxes.filter((b: any) => b.pageIndex === pageIdx);
@@ -464,12 +467,12 @@ export function onClick(this: any, e: MouseEvent): void {
   const contentY = e.clientY - contentRect.top;
 
   // 페이지 찾기
-  const pageIdx = this.virtualScroll.getPageAtY(contentY);
+  const pageIdx = this.virtualScroll.getPageAtPoint(contentX, contentY);
   const pageOffset = this.virtualScroll.getPageOffset(pageIdx);
 
   // CSS 중앙 정렬 보정 (left:50%; transform:translateX(-50%))
   const pageDisplayWidth = this.virtualScroll.getPageWidth(pageIdx);
-  const pageLeft = (scrollContent.clientWidth - pageDisplayWidth) / 2;
+  const pageLeft = this.virtualScroll.getPageLeftResolved(pageIdx, scrollContent.clientWidth);
 
   // 페이지 내 좌표 (줌 역산)
   const pageX = (contentX - pageLeft) / zoom;
@@ -497,6 +500,28 @@ export function onClick(this: any, e: MouseEvent): void {
         this.eventBus.emit('headerFooterModeChanged', 'none');
         // 본문 hitTest로 계속 진행
       } else {
+        // [Task #825] 머리말/꼬리말 편집 모드 — 그림 hit-test 우선, miss 시 텍스트 hit.
+        // 머리말 그림은 ImageNode 에 header_footer_ref 동반되어 picHit 정상 반환.
+        const picHit = this.findPictureAtClick(pageIdx, pageX, pageY);
+        if (picHit && (picHit.type === 'image' || picHit.type === 'shape' || picHit.type === 'line')) {
+          // 머리말 안 그림 객체 선택 → context menu 에 "개체 속성" 표시 가능
+          this.cursor.clearSelection();
+          this.exitPictureObjectSelectionIfNeeded();
+          this.cursor.enterPictureObjectSelectionDirect(
+            picHit.sec, picHit.ppi, picHit.ci, picHit.type as any,
+            picHit.cellIdx, picHit.cellParaIdx,
+            (picHit as any).headerFooter,
+            (picHit as any).outerTableControlIdx,
+            (picHit as any).cellPath,
+          );
+          this.active = true;
+          this.caret.hide();
+          this.selectionRenderer.clear();
+          this.renderPictureObjectSelection();
+          this.eventBus.emit('picture-object-selection-changed', true);
+          this.textarea.focus();
+          return;
+        }
         // 머리말/꼬리말 영역 클릭 → 내부 텍스트 히트테스트로 커서 이동
         try {
           const isHeader = this.cursor.headerFooterMode === 'header';
@@ -526,10 +551,43 @@ export function onClick(this: any, e: MouseEvent): void {
         try {
           const inFnHit = this.wasm.hitTestInFootnote(pageIdx, pageX, pageY);
           if (inFnHit.hit && inFnHit.fnParaIndex !== undefined && inFnHit.charOffset !== undefined) {
+            this.cursor.clearSelection();
             this.cursor.setFnCursorPosition(inFnHit.fnParaIndex, inFnHit.charOffset);
+            this.cursor.setFnAnchor();
+            this.active = true;
+            this.startTextSelectionDrag(e);
             this.updateCaret();
+            document.addEventListener('mouseup', this.onMouseUpBound, { once: true });
           }
         } catch { /* 무시 */ }
+        this.textarea.focus();
+        return;
+      }
+    } catch { /* 무시 */ }
+  }
+
+  // 본문 각주 마커 클릭 → 각주 편집 모드 진입
+  if (!this.cursor.isInFootnote()) {
+    try {
+      const markerHit = this.wasm.hitTestBodyFootnoteMarker(pageIdx, pageX, pageY);
+      if (
+        markerHit.hit &&
+        markerHit.sectionIndex !== undefined &&
+        markerHit.paragraphIndex !== undefined &&
+        markerHit.controlIndex !== undefined &&
+        markerHit.footnoteIndex !== undefined
+      ) {
+        this.cursor.enterFootnoteMode(
+          markerHit.sectionIndex,
+          markerHit.paragraphIndex,
+          markerHit.controlIndex,
+          markerHit.footnoteIndex,
+          pageIdx,
+        );
+        this.eventBus.emit('footnoteModeChanged', true);
+        this.cursor.setFnCursorPosition(0, 0);
+        this.active = true;
+        this.updateCaret();
         this.textarea.focus();
         return;
       }
@@ -552,7 +610,12 @@ export function onClick(this: any, e: MouseEvent): void {
             );
             this.eventBus.emit('footnoteModeChanged', true);
             if (inFnHit.fnParaIndex !== undefined && inFnHit.charOffset !== undefined) {
+              this.cursor.clearSelection();
               this.cursor.setFnCursorPosition(inFnHit.fnParaIndex, inFnHit.charOffset);
+              this.cursor.setFnAnchor();
+              this.active = true;
+              this.startTextSelectionDrag(e);
+              document.addEventListener('mouseup', this.onMouseUpBound, { once: true });
             }
             this.updateCaret();
             this.textarea.focus();
@@ -583,7 +646,8 @@ export function onClick(this: any, e: MouseEvent): void {
         this.selectionRenderer.clear();
         this.renderTableObjectSelection();
         this.eventBus.emit('table-object-selection-changed', true);
-        this.checkTransparentBordersTransition();
+        // [Task #394] 셀 진입 자동 ON 로직 비활성화 — input-handler.ts 의 코멘트 참고.
+        // this.checkTransparentBordersTransition();
         this.textarea.focus();
         return;
       }
@@ -600,13 +664,110 @@ export function onClick(this: any, e: MouseEvent): void {
         this.selectionRenderer.clear();
         this.renderTableObjectSelection();
         this.eventBus.emit('table-object-selection-changed', true);
-        this.checkTransparentBordersTransition();
+        // [Task #394] 셀 진입 자동 ON 로직 비활성화 — input-handler.ts 의 코멘트 참고.
+        // this.checkTransparentBordersTransition();
         this.textarea.focus();
         return;
       }
     }
 
-    // 글상자 내부 텍스트 직접 히트 → 바로 캐럿 진입
+    // [Task #919] 글상자 객체 선택 중 글상자 내부 클릭 → 텍스트 편집 진입.
+    // 한컴 UX: 객체 선택 후 다시 클릭 시 텍스트 편집 모드로 전환.
+    // 단, 외곽 경계선 (tolerance 5px) 클릭은 객체 선택 유지.
+    if (this.cursor.isInPictureObjectSelection() && hit.isTextBox
+        && hit.parentParaIndex !== undefined && hit.controlIndex !== undefined) {
+      const ref = this.cursor.getSelectedPictureRef();
+      if (ref && ref.type === 'shape'
+          && ref.sec === hit.sectionIndex
+          && ref.ppi === hit.parentParaIndex
+          && ref.ci === hit.controlIndex
+          && !this.isShapeBorderClickByRef(pageX, pageY, hit.sectionIndex, hit.parentParaIndex, hit.controlIndex)) {
+        // 같은 글상자 내부 클릭 → 객체 선택 해제 + 텍스트 편집 진입
+        this.cursor.exitPictureObjectSelection();
+        this.pictureObjectRenderer?.clear();
+        this.eventBus.emit('picture-object-selection-changed', false);
+        this.cursor.clearSelection();
+        this.cursor.moveTo(hit);
+        this.cursor.resetPreferredX();
+        this.cursor.setAnchor();
+        this.active = true;
+        this.startTextSelectionDrag(e);
+        this.updateCaret();
+        document.addEventListener('mouseup', this.onMouseUpBound, { once: true });
+        this.textarea.focus();
+        return;
+      }
+    }
+
+    // [Task #919] 글상자 외곽 경계선 클릭 (tolerance 5px) → 글상자 객체 선택.
+    // hit.isTextBox && hit.parentParaIndex/controlIndex 가 있는 경우 (글상자 안 hit)
+    // 만 경계선 검사 — 한컴 UX 정합 (글상자 BBox 테두리만 객체 선택).
+    if (hit.isTextBox && hit.parentParaIndex !== undefined && hit.controlIndex !== undefined) {
+      if (this.isShapeBorderClickByRef(pageX, pageY, hit.sectionIndex, hit.parentParaIndex, hit.controlIndex)) {
+        this.cursor.clearSelection();
+        this.exitPictureObjectSelectionIfNeeded();
+        this.cursor.enterPictureObjectSelectionDirect(
+          hit.sectionIndex, hit.parentParaIndex, hit.controlIndex, 'shape',
+        );
+        this.active = true;
+        this.caret.hide();
+        this.selectionRenderer.clear();
+        this.renderPictureObjectSelection();
+        this.eventBus.emit('picture-object-selection-changed', true);
+        this.textarea.focus();
+        return;
+      }
+    }
+
+    // [Task #919] 글상자 외곽 클릭 감지 — 글상자 바깥에서 외곽 근처 클릭
+    // hit 가 본문 paragraph 이고 인접 paragraph 에 글상자 컨트롤이 있는 경우.
+    if (!hit.isTextBox) {
+      const shapeHit = this.findShapeByOuterClick(pageX, pageY, hit.sectionIndex, hit.paragraphIndex);
+      if (shapeHit) {
+        this.cursor.clearSelection();
+        this.exitPictureObjectSelectionIfNeeded();
+        this.cursor.enterPictureObjectSelectionDirect(
+          shapeHit.sec, shapeHit.ppi, shapeHit.ci, 'shape',
+        );
+        this.active = true;
+        this.caret.hide();
+        this.selectionRenderer.clear();
+        this.renderPictureObjectSelection();
+        this.eventBus.emit('picture-object-selection-changed', true);
+        this.textarea.focus();
+        return;
+      }
+    }
+
+    // [Task #1171] 글상자(Shape text_box) 내부 클릭이 아래 텍스트 편집 진입으로 단락되기
+    // 전에 글상자 안 picture 를 선제 hit-test 한다. picture 우선(작업지시자 확정): 글상자
+    // 안 picture 위 클릭은 항상 picture 객체선택 (표 셀 안 picture 와 동작 일관).
+    // cellPath 동반(글상자/셀 중첩) image/equation 만 가로채고, picture 없는 글상자 영역
+    // 클릭은 아래 텍스트 편집으로 fall-through.
+    if (hit.isTextBox) {
+      const tbPic = this.findPictureAtClick(pageIdx, pageX, pageY);
+      if (tbPic && (tbPic.type === 'image' || tbPic.type === 'equation') && (tbPic as any).cellPath) {
+        this.cursor.clearSelection();
+        this.exitPictureObjectSelectionIfNeeded();
+        this.cursor.enterPictureObjectSelectionDirect(
+          tbPic.sec, tbPic.ppi, tbPic.ci, tbPic.type,
+          tbPic.cellIdx, tbPic.cellParaIdx, (tbPic as any).headerFooter,
+          (tbPic as any).outerTableControlIdx,
+          (tbPic as any).cellPath,
+          (tbPic as any).noteRef,
+        );
+        this.active = true;
+        this.caret.hide();
+        this.selectionRenderer.clear();
+        this.renderPictureObjectSelection();
+        this.eventBus.emit('picture-object-selection-changed', true);
+        this.textarea.focus();
+        return;
+      }
+    }
+
+    // 글상자 내부 텍스트/빈 영역 직접 히트 → 바로 캐럿 진입 (한컴 UX).
+    // [Task #919] hit_test_native 가 글상자 안 빈 영역에서도 isTextBox=true 반환.
     if (hit.isTextBox) {
       this.exitPictureObjectSelectionIfNeeded();
       this.cursor.clearSelection();
@@ -614,9 +775,10 @@ export function onClick(this: any, e: MouseEvent): void {
       this.cursor.resetPreferredX();
       this.cursor.setAnchor();
       this.active = true;
-      this.isDragging = true;
+      this.startTextSelectionDrag(e);
       this.updateCaret();
-      this.checkTransparentBordersTransition();
+      // [Task #394] 셀 진입 자동 ON 로직 비활성화 — input-handler.ts 의 코멘트 참고.
+      // this.checkTransparentBordersTransition();
       document.addEventListener('mouseup', this.onMouseUpBound, { once: true });
       this.textarea.focus();
       return;
@@ -626,10 +788,11 @@ export function onClick(this: any, e: MouseEvent): void {
     {
       const picHit = this.findPictureAtClick(pageIdx, pageX, pageY);
       if (picHit) {
-        // Shift+클릭: 다중 선택
+        // Shift+클릭: 다중 선택 + 맨 앞으로 이동
         if (e.shiftKey && this.cursor.isInPictureObjectSelection()) {
+          bringShapeToFront.call(this, picHit);
           const selType = picHit.type === 'shape' ? 'shape' as const : picHit.type as any;
-          this.cursor.togglePictureObjectSelection(picHit.sec, picHit.ppi, picHit.ci, selType);
+          this.cursor.togglePictureObjectSelection({ ...picHit, type: selType });
           this.caret.hide();
           this.selectionRenderer.clear();
           this.renderPictureObjectSelection();
@@ -639,10 +802,15 @@ export function onClick(this: any, e: MouseEvent): void {
         }
 
         if (picHit.type === 'line') {
-          // 직선 → 바로 객체 선택
+          // 직선 → 맨 앞으로 이동 후 객체 선택
+          bringShapeToFront.call(this, picHit);
           this.cursor.clearSelection();
           this.exitPictureObjectSelectionIfNeeded();
-          this.cursor.enterPictureObjectSelectionDirect(picHit.sec, picHit.ppi, picHit.ci, 'line');
+          // [Task #825] picHit.headerFooter 동반 시 머리말/꼬리말 그림 marker 보존.
+          this.cursor.enterPictureObjectSelectionDirect(
+            picHit.sec, picHit.ppi, picHit.ci, 'line',
+            undefined, undefined, (picHit as any).headerFooter,
+          );
           this.active = true;
           this.caret.hide();
           this.selectionRenderer.clear();
@@ -661,29 +829,50 @@ export function onClick(this: any, e: MouseEvent): void {
               this.cursor.resetPreferredX();
               this.cursor.setAnchor();
               this.active = true;
-              this.isDragging = true;
+              this.startTextSelectionDrag(e);
               this.updateCaret();
               document.addEventListener('mouseup', this.onMouseUpBound, { once: true });
               this.textarea.focus();
               return;
             }
           }
-          // 단일 클릭 → 객체 선택 (경계/내부 구분 없이)
-          this.cursor.clearSelection();
-          this.exitPictureObjectSelectionIfNeeded();
-          this.cursor.enterPictureObjectSelectionDirect(picHit.sec, picHit.ppi, picHit.ci, 'shape');
-          this.active = true;
-          this.caret.hide();
-          this.selectionRenderer.clear();
-          this.renderPictureObjectSelection();
-          this.eventBus.emit('picture-object-selection-changed', true);
-          this.textarea.focus();
-          return;
+          // [Task #919] 한컴 UX: 글상자 (Shape with text_box) 의 외곽 경계선만
+          // 객체 선택, 내부 클릭은 즉시 텍스트 편집 진입. picHit 의 shape 분기는
+          // 이미 hit 가 본문 fall-through 후 도달 — hit.isTextBox=false 상태.
+          // 외곽 경계선 검사 → 통과 시 객체 선택, 아니면 본 분기 무시하고 일반
+          // 캐럿 배치로 fall-through.
+          // (글상자 내부 영역은 위쪽 hit.isTextBox 분기 + isShapeBorderClick 으로
+          // 이미 처리됨. 본 분기는 hit_test_native 가 textbox_hit 매칭 못한 케이스
+          // 또는 글상자 안 표/이미지 hit 등으로 textbox 처리가 안 된 케이스.)
+          if (this.isShapeBorderClickByRef(pageX, pageY, picHit.sec, picHit.ppi, picHit.ci)) {
+            bringShapeToFront.call(this, picHit);
+            this.cursor.clearSelection();
+            this.exitPictureObjectSelectionIfNeeded();
+            this.cursor.enterPictureObjectSelectionDirect(
+              picHit.sec, picHit.ppi, picHit.ci, 'shape',
+              undefined, undefined, (picHit as any).headerFooter,
+            );
+            this.active = true;
+            this.caret.hide();
+            this.selectionRenderer.clear();
+            this.renderPictureObjectSelection();
+            this.eventBus.emit('picture-object-selection-changed', true);
+            this.textarea.focus();
+            return;
+          }
+          // 글상자 내부 클릭이나 hit_test_native 가 textbox 매칭 안 한 케이스
+          // → 일반 캐럿 배치로 fall-through (글상자 가로채기 제거)
         }
-        // 이미지 → 기존 객체 선택 유지
+        // 이미지/방정식 → 객체 선택 (z-order 미지원)
         this.cursor.clearSelection();
         this.exitPictureObjectSelectionIfNeeded();
-        this.cursor.enterPictureObjectSelectionDirect(picHit.sec, picHit.ppi, picHit.ci, picHit.type, picHit.cellIdx, picHit.cellParaIdx);
+        this.cursor.enterPictureObjectSelectionDirect(
+          picHit.sec, picHit.ppi, picHit.ci, picHit.type,
+          picHit.cellIdx, picHit.cellParaIdx, (picHit as any).headerFooter,
+          (picHit as any).outerTableControlIdx,
+          (picHit as any).cellPath,
+          (picHit as any).noteRef,
+        );
         this.active = true;
         this.caret.hide();
         this.selectionRenderer.clear();
@@ -720,7 +909,7 @@ export function onClick(this: any, e: MouseEvent): void {
     this.cursor.resetPreferredX();
     this.cursor.setAnchor(); // 드래그 시작점(anchor) 설정
     this.active = true;
-    this.isDragging = true;
+    this.startTextSelectionDrag(e);
 
     const rect = this.cursor.getRect();
     if (rect) {
@@ -728,7 +917,8 @@ export function onClick(this: any, e: MouseEvent): void {
     }
     this.selectionRenderer.clear();
     this.emitCursorFormatState();
-    this.checkTransparentBordersTransition();
+    // [Task #394] 셀 진입 자동 ON 로직 비활성화 — input-handler.ts 의 코멘트 참고.
+    // this.checkTransparentBordersTransition();
 
     // 필드(누름틀) 마커 표시 + 상태 표시줄 갱신
     this.updateFieldMarkers();
@@ -766,11 +956,11 @@ export function onDblClick(this: any, e: MouseEvent): void {
         const cr = sc.getBoundingClientRect();
         const contentX = e.clientX - cr.left;
         const contentY = e.clientY - cr.top;
-        const pageIdx = this.virtualScroll.getPageAtY(contentY);
+        const pageIdx = this.virtualScroll.getPageAtPoint(contentX, contentY);
         if (pageIdx >= 0) {
           const pageOffset = this.virtualScroll.getPageOffset(pageIdx);
           const pageDisplayWidth = this.virtualScroll.getPageWidth(pageIdx);
-          const pageLeft = ((sc as HTMLElement).clientWidth - pageDisplayWidth) / 2;
+          const pageLeft = this.virtualScroll.getPageLeftResolved(pageIdx, (sc as HTMLElement).clientWidth);
           const pageX = (contentX - pageLeft) / zoom;
           const pageY = (contentY - pageOffset) / zoom;
           const hfHit = this.wasm.hitTestHeaderFooter(pageIdx, pageX, pageY);
@@ -807,6 +997,18 @@ export function onDblClick(this: any, e: MouseEvent): void {
     // 글상자 객체 → 텍스트 편집 진입
     if (ref && ref.type === 'shape') {
       e.preventDefault();
+      // #686: ppi=0 앵커 도형 (master page 글상자 등)은 모든 페이지에 반복 표시됨.
+      // 텍스트 진입 시 cursor가 page 0으로 잡혀 뷰가 점프하므로, page 0이 아닐 때 차단.
+      if (ref.ppi === 0) {
+        const cursorPage = this.cursor.getRect()?.pageIndex ?? -1;
+        if (cursorPage !== 0) {
+          this.cursor.exitPictureObjectSelection();
+          this.pictureObjectRenderer?.clear();
+          this.eventBus.emit('picture-object-selection-changed', false);
+          this.textarea.focus();
+          return;
+        }
+      }
       this.cursor.exitPictureObjectSelection();
       this.pictureObjectRenderer?.clear();
       this.eventBus.emit('picture-object-selection-changed', false);
@@ -845,10 +1047,10 @@ export function onContextMenu(this: any, e: MouseEvent): void {
   const contentRect = scrollContent.getBoundingClientRect();
   const contentX = e.clientX - contentRect.left;
   const contentY = e.clientY - contentRect.top;
-  const pageIdx = this.virtualScroll.getPageAtY(contentY);
+  const pageIdx = this.virtualScroll.getPageAtPoint(contentX, contentY);
   const pageOffset = this.virtualScroll.getPageOffset(pageIdx);
   const pageDisplayWidth = this.virtualScroll.getPageWidth(pageIdx);
-  const pageLeft = (scrollContent.clientWidth - pageDisplayWidth) / 2;
+  const pageLeft = this.virtualScroll.getPageLeftResolved(pageIdx, scrollContent.clientWidth);
   const pageX = (contentX - pageLeft) / zoom;
   const pageY = (contentY - pageOffset) / zoom;
 
@@ -887,10 +1089,10 @@ export function onMouseMove(this: any, e: MouseEvent): void {
       const cr = sc.getBoundingClientRect();
       const cx = e.clientX - cr.left;
       const cy = e.clientY - cr.top;
-      const pi = this.virtualScroll.getPageAtY(cy);
+      const pi = this.virtualScroll.getPageAtPoint(cx, cy);
       const po = this.virtualScroll.getPageOffset(pi);
       const pw = this.virtualScroll.getPageWidth(pi);
-      const pl = (sc.clientWidth - pw) / 2;
+      const pl = this.virtualScroll.getPageLeftResolved(pi, sc.clientWidth);
       const pageX = (cx - pl) / zoom;
       const pageY = (cy - po) / zoom;
       _connector.showConnectionPointOverlay.call(this, pi, pageX, pageY);
@@ -1037,6 +1239,11 @@ export function onMouseMove(this: any, e: MouseEvent): void {
       this.dragRafId = 0;
       if (!this.isPictureResizeDragging || !this.pictureResizeState) return;
       this.updatePictureResizeDrag(e);
+
+      // 드래그 중에도 커서 방향 업데이트 (Flipping 대응)
+      const state = this.pictureResizeState;
+      const angleDeg = (state.rotationAngle ?? 0) as number;
+      this.container.style.cursor = getRotatedCursor(state.dir, angleDeg);
     });
     return;
   }
@@ -1054,15 +1261,16 @@ export function onMouseMove(this: any, e: MouseEvent): void {
 
   // 드래그 중: requestAnimationFrame으로 throttle하여 성능 확보
   if (this.isDragging) {
+    this.updateTextSelectionDragPointer(e);
     if (this.dragRafId) return; // 이미 예약된 프레임이 있으면 건너뜀
     this.dragRafId = requestAnimationFrame(() => {
       this.dragRafId = 0;
       if (!this.isDragging) return;
-      const hit = this.hitTestFromEvent(e);
-      if (hit && hit.paragraphIndex < 0xFFFFFF00) {
-        this.cursor.moveTo(hit);
-        this.updateCaret();
-      }
+      // [Task #661] 포인터 좌표 기반 hit-test (드래그 영역의 자동 스크롤 영역과 동기).
+      // PR #693 의 직접 hit + moveTo + updateCaretDuringDrag 영역은 PR #718 의
+      // updateTextSelectionDragFromPointer 래퍼 영역에 포함됨 (dragLastClientX/Y 사용).
+      // [Issue #669] 셀 가드는 input-handler.ts 의 래퍼 내부에 적용됨.
+      this.updateTextSelectionDragFromPointer();
     });
     return;
   }
@@ -1076,14 +1284,20 @@ export function onMouseMove(this: any, e: MouseEvent): void {
     const y = e.clientY - contentRect.top;
     const dir = this.pictureObjectRenderer.getHandleAtPoint(x, y);
     if (dir) {
-      const cursorMap: Record<string, string> = {
-        nw: 'nwse-resize', se: 'nwse-resize',
-        ne: 'nesw-resize', sw: 'nesw-resize',
-        n: 'ns-resize', s: 'ns-resize',
-        e: 'ew-resize', w: 'ew-resize',
-        rotate: 'grab',
-      };
-      this.container.style.cursor = cursorMap[dir] ?? '';
+      if (dir === 'rotate') {
+        this.container.style.cursor = 'grab';
+      } else {
+        // 회전된 도형의 경우 커서 방향도 회전시켜 표시
+        let angleDeg = 0;
+        const ref = this.cursor.getSelectedPictureRef();
+        if (ref && ref.type === 'shape') {
+          try {
+            const props = this.getObjectProperties(ref);
+            angleDeg = (props.rotationAngle ?? 0) as number;
+          } catch { /* ignore */ }
+        }
+        this.container.style.cursor = getRotatedCursor(dir, angleDeg);
+      }
     } else {
       // 핸들 밖 → 그림 본체 위이면 move 커서
       const ref = this.cursor.getSelectedPictureRef();
@@ -1091,10 +1305,10 @@ export function onMouseMove(this: any, e: MouseEvent): void {
         const picBbox = this.findPictureBbox(ref);
         if (picBbox) {
           const zoom = this.viewportManager.getZoom();
-          const pi = this.virtualScroll.getPageAtY(y);
+          const pi = this.virtualScroll.getPageAtPoint(x, y);
           const po = this.virtualScroll.getPageOffset(pi);
           const pw = this.virtualScroll.getPageWidth(pi);
-          const pl = (scrollContent.clientWidth - pw) / 2;
+          const pl = this.virtualScroll.getPageLeftResolved(pi, scrollContent.clientWidth);
           const px = (x - pl) / zoom;
           const py = (y - po) / zoom;
           if (pi === picBbox.pageIndex &&
@@ -1141,10 +1355,10 @@ export function onMouseMove(this: any, e: MouseEvent): void {
       const ref = this.cursor.getSelectedTableRef();
       if (ref) {
         const zoom = this.viewportManager.getZoom();
-        const pi = this.virtualScroll.getPageAtY(y);
+        const pi = this.virtualScroll.getPageAtPoint(x, y);
         const po = this.virtualScroll.getPageOffset(pi);
         const pw = this.virtualScroll.getPageWidth(pi);
-        const pl = (scrollContent.clientWidth - pw) / 2;
+        const pl = this.virtualScroll.getPageLeftResolved(pi, scrollContent.clientWidth);
         const px = (x - pl) / zoom;
         const py = (y - po) / zoom;
         try {
@@ -1188,10 +1402,10 @@ export function handleResizeHover(this: any, e: MouseEvent): void {
   const contentRect = scrollContent.getBoundingClientRect();
   const contentX = e.clientX - contentRect.left;
   const contentY = e.clientY - contentRect.top;
-  const pageIdx = this.virtualScroll.getPageAtY(contentY);
+  const pageIdx = this.virtualScroll.getPageAtPoint(contentX, contentY);
   const pageOffset = this.virtualScroll.getPageOffset(pageIdx);
   const pageDisplayWidth = this.virtualScroll.getPageWidth(pageIdx);
-  const pageLeft = (scrollContent.clientWidth - pageDisplayWidth) / 2;
+  const pageLeft = this.virtualScroll.getPageLeftResolved(pageIdx, scrollContent.clientWidth);
   const pageX = (contentX - pageLeft) / zoom;
   const pageY = (contentY - pageOffset) / zoom;
 
@@ -1312,7 +1526,7 @@ export function onMouseUp(this: any, _e: MouseEvent): void {
   }
 
   if (!this.isDragging) return;
-  this.isDragging = false;
+  this.stopTextSelectionDrag();
   if (this.dragRafId) {
     cancelAnimationFrame(this.dragRafId);
     this.dragRafId = 0;
@@ -1332,6 +1546,45 @@ export function onMouseUp(this: any, _e: MouseEvent): void {
     }
   }
 
-  this.updateCaret();
+  // [Task #779] mouseup 영역 의 updateCaret 은 scrollCaretIntoView skip.
+  // 본질: cursor 변경 trigger 영역 (mousedown / drag selection move 등) 에서 이미 cursor 위치
+  // 갱신 + scroll 호출 영역 동반. mouseup 영역 의 updateCaret 은 selection 종료 영역 의
+  // visual cleanup 만 담당 — caret 위치 자체는 변경 부재 영역. scrollCaretIntoView 가 호출 시
+  // 사용자 의도적 scrollbar drag (drag-during-scroll 패턴) 영역 의 caret 원본 위치 자동 복귀
+  // 결함 발동.
+  this.updateCaret(true);
 }
 
+
+/**
+ * 회전각을 반영하여 적절한 리사이즈 커서 이름을 반환한다.
+ * @param dir 기본 방향 ('nw', 'n', 'ne', 'e', 'se', 's', 'sw', 'w')
+ * @param angleDeg 회전각 (도)
+ */
+function bringShapeToFront(this: any, picHit: any): void {
+  if (picHit.type === 'shape' || picHit.type === 'line' || picHit.type === 'group') {
+    try {
+      this.wasm.changeShapeZOrder(picHit.sec, picHit.ppi, picHit.ci, 'front');
+      this.eventBus.emit('document-changed');
+    } catch { /* ignore */ }
+  }
+}
+
+function getRotatedCursor(dir: string, angleDeg: number): string {
+  const dirs = ['n', 'ne', 'e', 'se', 's', 'sw', 'w', 'nw'];
+  const idx = dirs.indexOf(dir);
+  if (idx === -1) return '';
+
+  // 45도 단위로 인덱스 시프트 (회전각 정규화)
+  const normalizedAngle = ((angleDeg % 360) + 360) % 360;
+  const shift = Math.round(normalizedAngle / 45);
+  const rotatedDir = dirs[(idx + shift) % 8];
+
+  const cursorMap: Record<string, string> = {
+    n: 'ns-resize', s: 'ns-resize',
+    e: 'ew-resize', w: 'ew-resize',
+    nw: 'nwse-resize', se: 'nwse-resize',
+    ne: 'nesw-resize', sw: 'nesw-resize',
+  };
+  return cursorMap[rotatedDir] ?? '';
+}

@@ -3,10 +3,57 @@
 
 import { InsertTextCommand, DeleteTextCommand, MergeParagraphCommand, MergeNextParagraphCommand, MergeParagraphInCellCommand, MergeNextParagraphInCellCommand } from './command';
 import type { DocumentPosition } from '@/core/types';
+import { showConfirm } from '@/ui/confirm-dialog';
+import {
+  detectPlatformKind,
+  getNavigationAction,
+  shouldSuppressUnmappedNavigation,
+  type NavigationAction,
+  type NavigationKeyInput,
+} from './navigation-keymap';
+
+const FOOTNOTE_DELETE_TITLE = '각주 삭제';
+const FOOTNOTE_DELETE_MESSAGE = '각주를 삭제하시겠습니까?';
 
 /** IME 조합 종료 후 대기 중인 탐색 키를 처리한다 */
-function processPendingNav(this: any, nav: { code: string; shiftKey: boolean; ctrlKey: boolean; metaKey: boolean }): void {
+function executeNavigationAction(this: any, action: NavigationAction, shiftKey: boolean): void {
+  if (shiftKey) this.cursor.setAnchor();
+  else this.cursor.clearSelection();
+
+  switch (action) {
+    case 'wordBackward':
+      this.cursor.moveToWordBoundary(-1);
+      break;
+    case 'wordForward':
+      this.cursor.moveToWordBoundary(1);
+      break;
+    case 'lineStart':
+      this.cursor.moveToLineStart();
+      break;
+    case 'lineEnd':
+      this.cursor.moveToLineEnd();
+      break;
+    case 'paragraphBackward':
+      this.cursor.moveToParagraphBoundary(-1);
+      break;
+    case 'paragraphForward':
+      this.cursor.moveToParagraphBoundary(1);
+      break;
+  }
+
+  this.updateCaret();
+  if (shiftKey) this.updateSelection();
+}
+
+function processPendingNav(this: any, nav: NavigationKeyInput): void {
   const { code, shiftKey } = nav;
+  const platform = detectPlatformKind();
+  const action = getNavigationAction(nav, platform);
+  if (action) {
+    executeNavigationAction.call(this, action, shiftKey);
+    return;
+  }
+  if (shouldSuppressUnmappedNavigation(nav, platform)) return;
 
   // 방향키 처리
   if (code === 'ArrowLeft' || code === 'ArrowRight' ||
@@ -41,6 +88,55 @@ function processPendingNav(this: any, nav: { code: string; shiftKey: boolean; ct
     this.updateCaret();
   } else if (code === 'Enter') {
     // Enter는 조합 확정만으로 충분 (줄바꿈은 별도 처리 불필요)
+  }
+}
+
+function tryDeleteBodyFootnoteAtCursor(
+  this: any,
+  pos: DocumentPosition,
+  direction: 'backward' | 'forward',
+): boolean {
+  if (pos.parentParaIndex !== undefined || pos.cellPath || pos.isTextBox) return false;
+
+  try {
+    const hit = this.wasm.getFootnoteAtCursor(
+      pos.sectionIndex,
+      pos.paragraphIndex,
+      pos.charOffset,
+      direction,
+    );
+    if (!hit.hit || hit.controlIndex === undefined) return false;
+
+    const sectionIndex = hit.sectionIndex ?? pos.sectionIndex;
+    const paragraphIndex = hit.paragraphIndex ?? pos.paragraphIndex;
+    const controlIndex = hit.controlIndex;
+
+    void showConfirm(FOOTNOTE_DELETE_TITLE, FOOTNOTE_DELETE_MESSAGE)
+      .then((ok) => {
+        if (!ok) {
+          this.textarea?.focus();
+          return;
+        }
+        this.executeOperation({
+          kind: 'snapshot',
+          operationType: 'deleteFootnote',
+          operation: (wasm: any) => {
+            const result = wasm.deleteFootnote(sectionIndex, paragraphIndex, controlIndex);
+            return {
+              sectionIndex: result.sectionIndex,
+              paragraphIndex: result.paragraphIndex,
+              charOffset: result.charOffset,
+            };
+          },
+        });
+        this.textarea?.focus();
+      })
+      .catch(() => {
+        this.textarea?.focus();
+      });
+    return true;
+  } catch {
+    return false;
   }
 }
 
@@ -86,6 +182,7 @@ export function handleBackspace(this: any, pos: DocumentPosition, inCell: boolea
     }
   } else {
     const { sectionIndex: sec, paragraphIndex: para } = pos;
+    if (tryDeleteBodyFootnoteAtCursor.call(this, pos, 'backward')) return;
     if (charOffset > 0) {
       const deletePos = { ...pos, charOffset: charOffset - 1 };
       this.executeOperation({ kind: 'command', command: new DeleteTextCommand(deletePos, 1, 'backward') });
@@ -138,19 +235,26 @@ export function handleDelete(this: any, pos: DocumentPosition, inCell: boolean):
     const ppi = pos.parentParaIndex!;
     const ci = pos.controlIndex!;
     const cei = pos.cellIndex!;
-    const cpi = pos.cellParaIndex!;
-    const paraLen = this.wasm.getCellParagraphLength(sec, ppi, ci, cei, cpi);
+    const useCellPath = (pos.cellPath?.length ?? 0) > 0;
+    const cpi = useCellPath ? pos.cellPath![pos.cellPath!.length - 1].cellParaIndex : pos.cellParaIndex!;
+    const pathJson = useCellPath ? JSON.stringify(pos.cellPath) : '';
+    const paraLen = useCellPath
+      ? this.wasm.getCellParagraphLengthByPath(sec, ppi, pathJson)
+      : this.wasm.getCellParagraphLength(sec, ppi, ci, cei, cpi);
     if (charOffset < paraLen) {
       this.executeOperation({ kind: 'command', command: new DeleteTextCommand(pos, 1, 'forward') });
     } else {
       // 셀 문단 끝에서 Delete → 다음 셀 문단과 병합
-      const paraCount = this.wasm.getCellParagraphCount(sec, ppi, ci, cei);
+      const paraCount = useCellPath
+        ? this.wasm.getCellParagraphCountByPath(sec, ppi, pathJson)
+        : this.wasm.getCellParagraphCount(sec, ppi, ci, cei);
       if (cpi + 1 < paraCount) {
         this.executeOperation({ kind: 'command', command: new MergeNextParagraphInCellCommand(pos) });
       }
     }
   } else {
     const { sectionIndex: sec, paragraphIndex: para } = pos;
+    if (tryDeleteBodyFootnoteAtCursor.call(this, pos, 'forward')) return;
     const paraLen = this.wasm.getParagraphLength(sec, para);
     if (charOffset < paraLen) {
       this.executeOperation({ kind: 'command', command: new DeleteTextCommand(pos, 1, 'forward') });
@@ -223,7 +327,7 @@ export function onCompositionEnd(this: any): void {
 
 export function getTextAt(this: any, pos: DocumentPosition, count: number): string {
   try {
-    if ((pos.cellPath?.length ?? 0) > 1 && pos.parentParaIndex !== undefined) {
+    if ((pos.cellPath?.length ?? 0) > 0 && pos.parentParaIndex !== undefined) {
       return this.wasm.getTextInCellByPath(pos.sectionIndex, pos.parentParaIndex, JSON.stringify(pos.cellPath), pos.charOffset, count);
     } else if (pos.parentParaIndex !== undefined) {
       return this.wasm.getTextInCell(pos.sectionIndex, pos.parentParaIndex, pos.controlIndex!, pos.cellIndex!, pos.cellParaIndex!, pos.charOffset, count);
@@ -276,7 +380,7 @@ export function onInput(this: any, e?: InputEvent): void {
       }
     }
 
-    this.afterEdit();
+    this.afterTextInputEdit(anchor, this.cursor.getPosition());
     return;
   }
 
@@ -328,8 +432,9 @@ export function onInput(this: any, e?: InputEvent): void {
     // 렌더링 디바운스: 빠른 연속 입력 중에는 렌더링 생략,
     // 마지막 입력 후 100ms 뒤에 한 번만 렌더링
     clearTimeout(this._iosInputTimer);
+    const iosAnchor = this._iosAnchor;
     this._iosInputTimer = setTimeout(() => {
-      this.afterEdit();
+      this.afterTextInputEdit(iosAnchor, this.cursor.getPosition());
       // 렌더링 후 div 포커스 복원 (afterEdit가 포커스를 뺏을 수 있음)
       this.textarea.focus();
     }, 100);
@@ -405,7 +510,7 @@ export function insertTextAtRaw(this: any, pos: DocumentPosition, text: string):
     );
     return;
   }
-  if ((pos.cellPath?.length ?? 0) > 1 && pos.parentParaIndex !== undefined) {
+  if ((pos.cellPath?.length ?? 0) > 0 && pos.parentParaIndex !== undefined) {
     this.wasm.insertTextInCellByPath(pos.sectionIndex, pos.parentParaIndex!, JSON.stringify(pos.cellPath), pos.charOffset, text);
   } else if (pos.parentParaIndex !== undefined) {
     const { sectionIndex: sec, parentParaIndex: ppi, controlIndex: ci, cellIndex: cei, cellParaIndex: cpi, charOffset } = pos;
@@ -434,7 +539,7 @@ export function deleteTextAt(this: any, pos: DocumentPosition, count: number): v
     );
     return;
   }
-  if ((pos.cellPath?.length ?? 0) > 1 && pos.parentParaIndex !== undefined) {
+  if ((pos.cellPath?.length ?? 0) > 0 && pos.parentParaIndex !== undefined) {
     this.wasm.deleteTextInCellByPath(pos.sectionIndex, pos.parentParaIndex!, JSON.stringify(pos.cellPath), pos.charOffset, count);
   } else if (pos.parentParaIndex !== undefined) {
     const { sectionIndex: sec, parentParaIndex: ppi, controlIndex: ci, cellIndex: cei, cellParaIndex: cpi, charOffset } = pos;
@@ -444,4 +549,3 @@ export function deleteTextAt(this: any, pos: DocumentPosition, count: number): v
     this.wasm.deleteText(sec, para, charOffset, count);
   }
 }
-

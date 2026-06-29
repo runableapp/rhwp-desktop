@@ -68,11 +68,39 @@ export class HwpCtrl {
     this.cursorPos = 0;
   }
 
-  /** HWP 파일로 내보내기 */
+  /** 원본 파일 형식에 맞게 HWP 또는 HWPX로 내보내기 */
   SaveAs(filename: string, format?: string, arg?: string): boolean {
     try {
-      const bytes = this.wasmDoc.exportHwp();
-      const blob = new Blob([bytes as BlobPart], { type: 'application/x-hwp' });
+      const sourceFormat = this.wasmDoc.getSourceFormat();
+      // #196: HWPX 출처는 저장 비활성화 (베타 단계, #197 완전 변환기 완료 시까지)
+      if (sourceFormat === 'hwpx' && format !== 'hwp') {
+        console.warn('[hwpctl] SaveAs: HWPX 출처 저장은 현재 베타 단계로 비활성화되어 있습니다 (#196)');
+        return false;
+      }
+      const isHwpx = format === 'hwpx' || (!format && sourceFormat === 'hwpx');
+      console.log(`[hwpctl] SaveAs: filename=${filename}, sourceFormat=${sourceFormat}, isHwpx=${isHwpx}`);
+
+      let bytes: Uint8Array;
+      let mimeType: string;
+      let ext: string;
+
+      if (isHwpx) {
+        bytes = this.wasmDoc.exportHwpx();
+        mimeType = 'application/hwp+zip';
+        ext = '.hwpx';
+      } else {
+        bytes = this.wasmDoc.exportHwp();
+        mimeType = 'application/x-hwp';
+        ext = '.hwp';
+      }
+
+      // 파일명에 확장자가 없으면 원본 형식에 맞게 추가
+      if (!filename.endsWith(ext) && !filename.endsWith('.hwp') && !filename.endsWith('.hwpx')) {
+        filename += ext;
+      }
+
+      console.log(`[hwpctl] SaveAs: ${isHwpx ? 'HWPX' : 'HWP'}, ${bytes.length} bytes, ext=${ext}`);
+      const blob = new Blob([bytes as BlobPart], { type: mimeType });
       const url = URL.createObjectURL(blob);
       const a = document.createElement('a');
       a.href = url;
@@ -331,8 +359,7 @@ export class HwpCtrl {
  *
  * 사용:
  * ```javascript
- * // 기본값 권장: 번들러(Vite)가 @rhwp/core WASM 자산을 처리
- * const HwpCtrl = await createHwpCtrl({});
+ * const HwpCtrl = await createHwpCtrl({ wasmUrl: '/pkg/rhwp_bg.wasm' });
  * HwpCtrl.Open(fileBlob);
  * ```
  */

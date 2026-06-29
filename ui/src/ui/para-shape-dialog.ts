@@ -32,6 +32,7 @@ import {
   buildTabSettingsTab, buildBorderTab,
   type TabState, type TabSettingsResult, type BorderTabResult,
 } from './para-shape-tab-builders';
+import { enableDialogDrag } from './dialog-drag';
 
 /** 정렬 아이콘 (SVG 아이콘 — 서식바와 동일) */
 const ALIGN_OPTIONS: { value: string; label: string; cssClass: string }[] = [
@@ -248,7 +249,7 @@ export class ParaShapeDialog {
       if (e.target === this.overlay) this.hide();
     });
 
-    this.enableDrag(titleBar);
+    enableDialogDrag(this.dialog, titleBar);
   }
 
   private switchTab(idx: number): void {
@@ -719,7 +720,7 @@ export class ParaShapeDialog {
     if (checkedRadio?.value === 'indent') indent = parseFloat(this.indentInput.value) || 0;
     else if (checkedRadio?.value === 'hanging') indent = -(parseFloat(this.indentInput.value) || 0);
 
-    this.previewEl.innerHTML = '';
+    this.previewEl.replaceChildren();
     const sampleLines = [
       '이것은 문단 미리보기입니다. 이렇게 문단의 정렬과 여백, 들여쓰기가 적용된 모습을 확인할 수 있습니다.',
       '두 번째 줄은 보통 여백만 적용됩니다.',
@@ -872,8 +873,12 @@ export class ParaShapeDialog {
     if (newFillColor !== (p.fillColor ?? '#ffffff')) mods.fillColor = newFillColor;
     const newPatColor = this.borderResult.bgPatColorInput.value;
     if (newPatColor !== (p.patternColor ?? '#000000')) mods.patternColor = newPatColor;
-    const newPatType = parseInt(this.borderResult.bgPatShapeSelect.value) || 0;
-    if (newPatType !== (p.patternType ?? 0)) mods.patternType = newPatType;
+    // [Issue #1172] patternType: 무늬 없음 = -1 (IR 정합). select '없음' value=-1.
+    // 종전 `|| 0` 은 -1(truthy)을 보존하나 폴백 기본값을 0 으로 두어, patternType=-1
+    // 문단에서 0!=-1 변경 오인 → fillType=solid 강제 주입(배경 생성) 결함을 냈다.
+    const parsedPat = parseInt(this.borderResult.bgPatShapeSelect.value, 10);
+    const newPatType = Number.isNaN(parsedPat) ? -1 : parsedPat;
+    if (newPatType !== (p.patternType ?? -1)) mods.patternType = newPatType;
     // 배경이 변경되었으면 fillType도 함께 전송
     if (mods.fillColor || mods.patternColor || mods.patternType !== undefined) {
       if (!mods.fillType) mods.fillType = newFillType;
@@ -915,29 +920,6 @@ export class ParaShapeDialog {
     }
     if (this.onApply) this.onApply(mods);
     this.hide();
-  }
-
-  // ════════════════════════════════════════════════════════
-  //  드래그
-  // ════════════════════════════════════════════════════════
-
-  private enableDrag(titleEl: HTMLElement): void {
-    let offsetX = 0, offsetY = 0, isDragging = false;
-    titleEl.addEventListener('mousedown', (e) => {
-      if ((e.target as HTMLElement).closest('.dialog-close')) return;
-      isDragging = true;
-      const rect = this.dialog.getBoundingClientRect();
-      offsetX = e.clientX - rect.left;
-      offsetY = e.clientY - rect.top;
-      e.preventDefault();
-    });
-    document.addEventListener('mousemove', (e) => {
-      if (!isDragging) return;
-      this.dialog.style.left = `${e.clientX - offsetX}px`;
-      this.dialog.style.top = `${e.clientY - offsetY}px`;
-      this.dialog.style.margin = '0';
-    });
-    document.addEventListener('mouseup', () => { isDragging = false; });
   }
 
 }

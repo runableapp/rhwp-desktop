@@ -1,3 +1,5 @@
+import { enableDialogDrag } from './dialog-drag';
+
 /**
  * 모달 다이얼로그 베이스 클래스 (WebGian dialog_wrap 패턴)
  *
@@ -73,6 +75,7 @@ export abstract class ModalDialog {
       if (e.target === this.overlay) this.hide();
     });
 
+    enableDialogDrag(this.dialog, titleBar);
   }
 
   show(): void {

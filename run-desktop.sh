@@ -12,5 +12,6 @@ cd "${ROOT_DIR}/desktop"
 npm run build
 
 echo "[hwp-editor] launch electron"
+cd "${ROOT_DIR}/desktop"
 node node_modules/electron/cli.js dist/main.js
 

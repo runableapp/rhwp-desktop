@@ -5,6 +5,7 @@ import { NumberingDialog } from '@/ui/numbering-dialog';
 import { StyleDialog } from '@/ui/style-dialog';
 import { StyleEditDialog } from '@/ui/style-edit-dialog';
 import { PicturePropsDialog } from '@/ui/picture-props-dialog';
+import { EquationPropertiesDialog } from '@/ui/equation-props-dialog';
 import { TableCellPropsDialog } from '@/ui/table-cell-props-dialog';
 
 export const formatCommands: CommandDef[] = [
@@ -139,6 +140,46 @@ export const formatCommands: CommandDef[] = [
     canExecute: (ctx) => ctx.hasDocument,
     execute(services) {
       services.getInputHandler()?.adjustFontSize(-100); // -1pt
+    },
+  },
+  // 장평 줄이기 (Shift+Alt+J)
+  {
+    id: 'format:char-ratio-decrease',
+    label: '장평 줄이기',
+    shortcutLabel: 'Shift+Alt+J',
+    canExecute: (ctx) => ctx.hasDocument,
+    execute(services) {
+      services.getInputHandler()?.adjustCharRatio(-1);
+    },
+  },
+  // 장평 늘리기 (Shift+Alt+K)
+  {
+    id: 'format:char-ratio-increase',
+    label: '장평 늘리기',
+    shortcutLabel: 'Shift+Alt+K',
+    canExecute: (ctx) => ctx.hasDocument,
+    execute(services) {
+      services.getInputHandler()?.adjustCharRatio(1);
+    },
+  },
+  // 자간 줄이기 (Shift+Alt+N)
+  {
+    id: 'format:char-spacing-decrease',
+    label: '자간 줄이기',
+    shortcutLabel: 'Shift+Alt+N',
+    canExecute: (ctx) => ctx.hasDocument,
+    execute(services) {
+      services.getInputHandler()?.adjustCharSpacing(-1);
+    },
+  },
+  // 자간 늘리기 (Shift+Alt+W)
+  {
+    id: 'format:char-spacing-increase',
+    label: '자간 늘리기',
+    shortcutLabel: 'Shift+Alt+W',
+    canExecute: (ctx) => ctx.hasDocument,
+    execute(services) {
+      services.getInputHandler()?.adjustCharSpacing(1);
     },
   },
   // 문단 정렬
@@ -411,7 +452,12 @@ export const formatCommands: CommandDef[] = [
       // 그림/도형 선택 시
       if (ih.isInPictureObjectSelection()) {
         const ref = ih.getSelectedPictureRef();
-        if (!ref || ref.type === 'equation' || ref.type === 'group') return;
+        if (!ref) return;
+        if (ref.type === 'equation') {
+          const dialog = new EquationPropertiesDialog(services.wasm, services.eventBus);
+          dialog.open(ref.sec, ref.ppi, ref.ci, ref.cellIdx, ref.cellParaIdx, ref.noteRef);
+          return;
+        }
         const dialog = new PicturePropsDialog(services.wasm, services.eventBus);
         dialog.open(ref.sec, ref.ppi, ref.ci, ref.type);
         return;

@@ -10,9 +10,10 @@
  * 레이아웃: 좌측(탭+컨텐츠) + 우측(버튼) 패턴
  * CSS 접두어: pp-
  */
-import type { PictureProperties, ShapeProperties } from '@/core/types';
+import type { PictureProperties, ShapeProperties, CellPathLike } from '@/core/types';
 import type { WasmBridge } from '@/core/wasm-bridge';
 import type { EventBus } from '@/core/event-bus';
+import { enableDialogDrag } from './dialog-drag';
 
 /** HWPUNIT ↔ mm 변환 상수 (1 inch = 25.4 mm = 7200 HWPUNIT) */
 const HWP_PER_MM = 7200 / 25.4; // ≈ 283.46
@@ -66,7 +67,13 @@ export class PicturePropsDialog {
   private sec = 0;
   private para = 0;
   private ci = 0;
-  private objectType: 'image' | 'shape' | 'line' = 'image';
+  private objectType: 'image' | 'shape' | 'line' | 'group' = 'image';
+  /** [Task #825] 머리말/꼬리말 그림 marker (Some 일 때 신규 API 사용). */
+  private headerFooter: { kind: 'header' | 'footer'; outerParaIdx: number; outerControlIdx: number } | undefined;
+  /** [Task #1138] 표 셀 내 객체 marker (Some 일 때 by_path API 사용). */
+  private cellPath: CellPathLike | undefined;
+  /** [Task #1138] 셀 paragraph 내 picture/shape control 인덱스 (cellPath 동반). */
+  private innerControlIdx = 0;
   private props: PictureProperties | null = null;
   private shapeProps: ShapeProperties | null = null;
 
@@ -178,6 +185,9 @@ export class PicturePropsDialog {
   private tbFormModeCheck!: HTMLInputElement;
 
   // ── 그림 탭 컨트롤 ──
+  // [Task #741 후속] 외부 file path 그림 영역 영역 dialog 표시 영역
+  private picFileNameInput!: HTMLInputElement;
+  private picEmbedCheck!: HTMLInputElement;
   private picScaleXInput!: HTMLInputElement;
   private picScaleYInput!: HTMLInputElement;
   private picKeepRatioCheck!: HTMLInputElement;
@@ -211,19 +221,50 @@ export class PicturePropsDialog {
   //  공개 API
   // ════════════════════════════════════════════════════════
 
-  open(sec: number, para: number, ci: number, type: 'image' | 'shape' | 'line' = 'image'): void {
+  open(
+    sec: number,
+    para: number,
+    ci: number,
+    type: 'image' | 'shape' | 'line' | 'group' = 'image',
+    headerFooter?: { kind: 'header' | 'footer'; outerParaIdx: number; outerControlIdx: number },
+    cellPath?: CellPathLike,
+    innerControlIdx?: number,
+  ): void {
     this.build();
     this.sec = sec;
     this.para = para;
     this.ci = ci;
     this.objectType = type;
+    this.headerFooter = headerFooter;
+    // [Task #1138] cellPath 가 있으면 표 셀 내부 객체 — by_path API 사용.
+    this.cellPath = cellPath;
+    this.innerControlIdx = innerControlIdx ?? 0;
 
-    if (type === 'shape' || type === 'line') {
-      this.shapeProps = this.wasm.getShapeProperties(sec, para, ci);
+    // getter 분기:
+    // - shape/line/group: cellPath > 외부 (셀 안 도형은 by_path API)
+    // - picture: headerFooter > cellPath > 외부
+    //   [Task #1151 v4] 셀 안 inline picture 는 getCellPicturePropertiesByPath
+    //   wasm API 호출.
+    if (type === 'shape' || type === 'line' || type === 'group') {
+      if (cellPath) {
+        this.shapeProps = this.wasm.getCellShapePropertiesByPath(sec, para, cellPath, this.innerControlIdx);
+      } else {
+        this.shapeProps = this.wasm.getShapeProperties(sec, para, ci);
+      }
       this.props = this.shapeProps as unknown as PictureProperties;
     } else {
       this.shapeProps = null;
-      this.props = this.wasm.getPictureProperties(sec, para, ci);
+      if (headerFooter) {
+        // [Task #825] 머리말/꼬리말 그림 — 별도 5-tuple API
+        this.props = this.wasm.getHeaderFooterPictureProperties(
+          sec, headerFooter.outerParaIdx, headerFooter.outerControlIdx, para, ci,
+        );
+      } else if (cellPath) {
+        // [Task #1151 v4] 셀 안 inline picture — by_path API 호출.
+        this.props = this.wasm.getCellPicturePropertiesByPath(sec, para, cellPath, this.innerControlIdx);
+      } else {
+        this.props = this.wasm.getPictureProperties(sec, para, ci);
+      }
     }
     this.originalWidth = this.props.width;
     this.originalHeight = this.props.height;
@@ -310,7 +351,7 @@ export class PicturePropsDialog {
       if (e.target === this.overlay) this.hide();
     });
 
-    this.enableDrag(titleBar);
+    enableDialogDrag(this.dialog, titleBar);
   }
 
   private switchTab(idx: number): void {
@@ -320,13 +361,13 @@ export class PicturePropsDialog {
 
   /** 개체 타입에 따라 탭을 재구성한다 */
   private rebuildTabs(): void {
-    this.tabGroup.innerHTML = '';
-    this.body.innerHTML = '';
+    this.tabGroup.replaceChildren();
+    this.body.replaceChildren();
     this.tabs = [];
     this.panels = [];
 
     const tabNames = this.objectType === 'line' ? LINE_TAB_NAMES
-      : this.objectType === 'shape' ? SHAPE_TAB_NAMES
+      : (this.objectType === 'shape' || this.objectType === 'group') ? SHAPE_TAB_NAMES
       : PICTURE_TAB_NAMES;
     tabNames.forEach((name, i) => {
       const btn = document.createElement('button');
@@ -451,8 +492,13 @@ export class PicturePropsDialog {
     const hPosRow = this.row();
     hPosRow.classList.add('pp-pos-detail');
     hPosRow.appendChild(this.label('가로(I):'));
+    // [Task #1151 v8 결함 B] Para 옵션 추가. horz_rel_to 의 valid 값은
+    // Paper/Page/Column/Para 4 개 (스펙 pack_common_attr_bits 의 horz_rel_to_to_bits).
+    // 이전: ['Paper', '종이'], ['Page', '쪽'], ['Column', '단'] 만 → picture.common.horz_rel_to
+    // = Para 시 select 매칭 실패 → "select 없음" 표시. 사용자 한컴 native 시연 시
+    // 글자처럼 해제 후 가로 기준이 "문단" 으로 표시되어야 정합 (한컴 동작).
     this.horzRelSelect = this.selectEl([
-      ['Paper', '종이'], ['Page', '쪽'], ['Column', '단'],
+      ['Paper', '종이'], ['Page', '쪽'], ['Column', '단'], ['Para', '문단'],
     ]);
     hPosRow.appendChild(this.horzRelSelect);
     hPosRow.appendChild(this.unit('의'));
@@ -472,7 +518,7 @@ export class PicturePropsDialog {
     vPosRow.classList.add('pp-pos-detail');
     vPosRow.appendChild(this.label('세로(V):'));
     this.vertRelSelect = this.selectEl([
-      ['Paper', '종이'], ['Page', '쪽'], ['Paragraph', '문단'],
+      ['Paper', '종이'], ['Page', '쪽'], ['Para', '문단'],
     ]);
     vPosRow.appendChild(this.vertRelSelect);
     vPosRow.appendChild(this.unit('의'));
@@ -1405,17 +1451,19 @@ export class PicturePropsDialog {
     const fileFs = this.fieldset('파일 이름');
     panel.appendChild(fileFs);
     const fileRow = this.row();
-    const fileNameInput = document.createElement('input');
-    fileNameInput.type = 'text';
-    fileNameInput.className = 'dialog-input';
-    fileNameInput.style.width = '280px';
-    fileNameInput.readOnly = true;
-    fileNameInput.value = '(문서에 포함된 그림)';
-    fileRow.appendChild(fileNameInput);
+    // [Task #741 후속] 외부 file path 그림 영역 dialog 표시 영역. populateFromProps 영역
+    // 영역 props.externalPath 영역 보유 시 file path + embed=false 영역 갱신.
+    this.picFileNameInput = document.createElement('input');
+    this.picFileNameInput.type = 'text';
+    this.picFileNameInput.className = 'dialog-input';
+    this.picFileNameInput.style.width = '280px';
+    this.picFileNameInput.readOnly = true;
+    this.picFileNameInput.value = '(문서에 포함된 그림)';
+    fileRow.appendChild(this.picFileNameInput);
     const embedLabel = this.checkboxLabel('문서에 포함');
-    const embedCheck = embedLabel.querySelector('input') as HTMLInputElement;
-    embedCheck.checked = true;
-    embedCheck.disabled = true;
+    this.picEmbedCheck = embedLabel.querySelector('input') as HTMLInputElement;
+    this.picEmbedCheck.checked = true;
+    this.picEmbedCheck.disabled = true;
     fileRow.appendChild(embedLabel);
     fileFs.appendChild(fileRow);
 
@@ -1876,7 +1924,7 @@ export class PicturePropsDialog {
     if (desc !== this.props.description) updated['description'] = desc;
 
     // Shape(글상자) 전용 속성
-    if ((this.objectType === 'shape' || this.objectType === 'line') && this.shapeProps) {
+    if ((this.objectType === 'shape' || this.objectType === 'line' || this.objectType === 'group') && this.shapeProps) {
       // 글상자 여백
       const ml = mmToHwp(parseFloat(this.tbMarginLeftInput?.value) || 0);
       const mr = mmToHwp(parseFloat(this.tbMarginRightInput?.value) || 0);
@@ -2114,8 +2162,32 @@ export class PicturePropsDialog {
     }
 
     if (Object.keys(updated).length > 0) {
-      if (this.objectType === 'shape' || this.objectType === 'line') {
-        this.wasm.setShapeProperties(this.sec, this.para, this.ci, updated);
+      // setter 분기:
+      // - shape/line/group: cellPath > 외부
+      // - picture: headerFooter > cellPath > 외부
+      //   [Task #1151 v4] 셀 안 inline picture 는 setCellPicturePropertiesByPath
+      //   wasm API 호출. 본문 picture (cellPath 없음) 는 기존 setPictureProperties.
+      if (this.objectType === 'shape' || this.objectType === 'line' || this.objectType === 'group') {
+        if (this.cellPath) {
+          this.wasm.setCellShapePropertiesByPath(
+            this.sec, this.para, this.cellPath, this.innerControlIdx, updated,
+          );
+        } else {
+          this.wasm.setShapeProperties(this.sec, this.para, this.ci, updated);
+        }
+      } else if (this.headerFooter) {
+        // [Task #825] 머리말/꼬리말 그림은 별도 API — 5-tuple lookup. 캡션 신규
+        // 생성은 미지원 (set_header_footer_picture_properties_native 가 NotSupported
+        // 에러 반환 — 본 dialog 에서는 일반 속성 변경만 허용).
+        this.wasm.setHeaderFooterPictureProperties(
+          this.sec, this.headerFooter.outerParaIdx, this.headerFooter.outerControlIdx,
+          this.para, this.ci, updated,
+        );
+      } else if (this.cellPath) {
+        // [Task #1151 v4] 셀 안 inline picture — by_path API 호출.
+        this.wasm.setCellPicturePropertiesByPath(
+          this.sec, this.para, this.cellPath, this.innerControlIdx, updated,
+        );
       } else {
         this.wasm.setPictureProperties(this.sec, this.para, this.ci, updated);
       }
@@ -2130,6 +2202,20 @@ export class PicturePropsDialog {
 
   private populateFromProps(): void {
     if (!this.props) return;
+    // [Task #741 후속 — 한컴 viewer 정합] 외부 file path 그림 영역 dialog 표시 영역.
+    // props.externalPath 영역 영역 그대로 표시 (resolved path 영역, 한컴 viewer 영역 영역
+    // 원본 절대 경로 영역 영역 access 부재 시 HWP file 영역 영역 같은 dir 영역 image 영역
+    // 영역 영역 path 영역 영역 갱신 — populate_external_images_from_dir / inject_external_image
+    // 영역 영역 변경 영역 ~~basename~~ → resolved local path 영역 영역).
+    if (this.picFileNameInput && this.picEmbedCheck) {
+      if (this.props.externalPath) {
+        this.picFileNameInput.value = this.props.externalPath;
+        this.picEmbedCheck.checked = false;
+      } else {
+        this.picFileNameInput.value = '(문서에 포함된 그림)';
+        this.picEmbedCheck.checked = true;
+      }
+    }
     this.widthInput.value = hwpToMm(this.props.width).toFixed(2);
     this.heightInput.value = hwpToMm(this.props.height).toFixed(2);
     this.treatAsCharCheck.checked = this.props.treatAsChar;
@@ -2146,7 +2232,7 @@ export class PicturePropsDialog {
     this.updatePositionVisibility();
 
     // Shape/Line 전용 필드
-    if ((this.objectType === 'shape' || this.objectType === 'line') && this.shapeProps) {
+    if ((this.objectType === 'shape' || this.objectType === 'line' || this.objectType === 'group') && this.shapeProps) {
       const sp = this.shapeProps;
 
       // 기본 탭 — 회전/대칭
@@ -2449,6 +2535,7 @@ export class PicturePropsDialog {
     mainRow.appendChild(rightCol);
     dlg.appendChild(mainRow);
     overlay.appendChild(dlg);
+    enableDialogDrag(dlg, titleBar);
 
     // Escape / 오버레이 클릭
     overlay.addEventListener('keydown', (e) => {
@@ -2460,29 +2547,6 @@ export class PicturePropsDialog {
 
     document.body.appendChild(overlay);
     setTimeout(() => textarea.focus(), 50);
-  }
-
-  // ════════════════════════════════════════════════════════
-  //  드래그
-  // ════════════════════════════════════════════════════════
-
-  private enableDrag(titleEl: HTMLElement): void {
-    let offsetX = 0, offsetY = 0, isDragging = false;
-    titleEl.addEventListener('mousedown', (e) => {
-      if ((e.target as HTMLElement).closest('.dialog-close')) return;
-      isDragging = true;
-      const rect = this.dialog.getBoundingClientRect();
-      offsetX = e.clientX - rect.left;
-      offsetY = e.clientY - rect.top;
-      e.preventDefault();
-    });
-    document.addEventListener('mousemove', (e) => {
-      if (!isDragging) return;
-      this.dialog.style.left = `${e.clientX - offsetX}px`;
-      this.dialog.style.top = `${e.clientY - offsetY}px`;
-      this.dialog.style.margin = '0';
-    });
-    document.addEventListener('mouseup', () => { isDragging = false; });
   }
 
   // ════════════════════════════════════════════════════════

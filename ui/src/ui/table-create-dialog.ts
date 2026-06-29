@@ -15,6 +15,9 @@
  *  └────────────────────┘
  */
 
+import { makeOption } from './dom-utils';
+import { enableDialogDrag } from './dialog-drag';
+
 const GRID_ROWS = 8;
 const GRID_COLS = 10;
 const CELL_SIZE = 16;   // px
@@ -164,7 +167,11 @@ export class TableCreateDialog {
     const footer = document.createElement('div');
     footer.style.cssText =
       'padding:5px 8px;border-top:1px solid #e0e0e0;cursor:pointer;font-size:12px;color:#333;';
-    footer.innerHTML = '<span style="margin-right:4px;">&#8862;</span>표 만들기...';
+    const icon = document.createElement('span');
+    icon.style.marginRight = '4px';
+    icon.textContent = '\u229E';
+    footer.appendChild(icon);
+    footer.appendChild(document.createTextNode('표 만들기...'));
     footer.addEventListener('mouseenter', () => { footer.style.background = '#e8f0fe'; });
     footer.addEventListener('mouseleave', () => { footer.style.background = ''; });
     footer.addEventListener('click', () => {
@@ -247,6 +254,7 @@ export class TableCreateDialog {
     closeBtn.addEventListener('click', close);
     title.appendChild(closeBtn);
     dlg.appendChild(title);
+    enableDialogDrag(dlg, title);
 
     // 본문: 좌측 폼 + 우측 버튼
     const body = document.createElement('div');
@@ -272,7 +280,8 @@ export class TableCreateDialog {
     const widthMode = document.createElement('select');
     widthMode.className = 'dialog-select';
     widthMode.style.width = '90px';
-    widthMode.innerHTML = '<option value="fit">단에 맞춤</option><option value="custom">직접 지정</option>';
+    widthMode.appendChild(makeOption('fit', '단에 맞춤'));
+    widthMode.appendChild(makeOption('custom', '직접 지정'));
     widthRow.appendChild(widthMode);
     const widthVal = document.createElement('input');
     widthVal.className = 'dialog-input';
@@ -295,7 +304,8 @@ export class TableCreateDialog {
     const heightMode = document.createElement('select');
     heightMode.className = 'dialog-select';
     heightMode.style.width = '90px';
-    heightMode.innerHTML = '<option value="auto">자동</option><option value="custom">직접 지정</option>';
+    heightMode.appendChild(makeOption('auto', '자동'));
+    heightMode.appendChild(makeOption('custom', '직접 지정'));
     heightRow.appendChild(heightMode);
     const heightVal = document.createElement('input');
     heightVal.className = 'dialog-input';

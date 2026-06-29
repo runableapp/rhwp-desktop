@@ -59,6 +59,22 @@ export interface TabSettingsResult {
   renderDeletedTabList(): void;
 }
 
+function appendHeaderRow(thead: HTMLTableSectionElement, labels: string[]): void {
+  const tr = document.createElement('tr');
+  labels.forEach(labelText => {
+    const th = document.createElement('th');
+    th.textContent = labelText;
+    tr.appendChild(th);
+  });
+  thead.appendChild(tr);
+}
+
+function appendTableCell(tr: HTMLTableRowElement, text: string): void {
+  const td = document.createElement('td');
+  td.textContent = text;
+  tr.appendChild(td);
+}
+
 export function buildTabSettingsTab(state: TabState): TabSettingsResult {
   const TAB_TYPE_NAMES = ['왼쪽', '오른쪽', '가운데', '소수점'];
 
@@ -164,7 +180,7 @@ export function buildTabSettingsTab(state: TabState): TabSettingsResult {
   const tabTable = document.createElement('table');
   tabTable.className = 'ps-tab-table';
   const thead = document.createElement('thead');
-  thead.innerHTML = '<tr><th>위치</th><th>종류</th></tr>';
+  appendHeaderRow(thead, ['위치', '종류']);
   tabTable.appendChild(thead);
   const tabListBody = document.createElement('tbody');
   tabTable.appendChild(tabListBody);
@@ -199,7 +215,7 @@ export function buildTabSettingsTab(state: TabState): TabSettingsResult {
   const delTable = document.createElement('table');
   delTable.className = 'ps-tab-table';
   const dThead = document.createElement('thead');
-  dThead.innerHTML = '<tr><th>위치</th><th>종류</th></tr>';
+  appendHeaderRow(dThead, ['위치', '종류']);
   delTable.appendChild(dThead);
   const deletedTabListBody = document.createElement('tbody');
   delTable.appendChild(deletedTabListBody);
@@ -305,11 +321,12 @@ export function buildTabSettingsTab(state: TabState): TabSettingsResult {
   }
 
   function renderTabList(): void {
-    tabListBody.innerHTML = '';
+    tabListBody.replaceChildren();
     state.currentTabStops.forEach((t, i) => {
       const tr = document.createElement('tr');
       if (i === state.selectedTabIndex) tr.className = 'selected';
-      tr.innerHTML = `<td>${(t.position / 100).toFixed(1)} pt</td><td>${TAB_TYPE_NAMES[t.type] ?? '?'}</td>`;
+      appendTableCell(tr, `${(t.position / 100).toFixed(1)} pt`);
+      appendTableCell(tr, TAB_TYPE_NAMES[t.type] ?? '?');
       tr.addEventListener('click', () => {
         state.selectedTabIndex = i;
         renderTabList();
@@ -319,10 +336,11 @@ export function buildTabSettingsTab(state: TabState): TabSettingsResult {
   }
 
   function renderDeletedTabList(): void {
-    deletedTabListBody.innerHTML = '';
+    deletedTabListBody.replaceChildren();
     state.deletedTabStops.forEach((t, i) => {
       const tr = document.createElement('tr');
-      tr.innerHTML = `<td>${(t.position / 100).toFixed(1)} pt</td><td>${TAB_TYPE_NAMES[t.type] ?? '?'}</td>`;
+      appendTableCell(tr, `${(t.position / 100).toFixed(1)} pt`);
+      appendTableCell(tr, TAB_TYPE_NAMES[t.type] ?? '?');
       tr.addEventListener('dblclick', () => restoreTabStop(i));
       tr.title = '더블클릭하여 복원';
       deletedTabListBody.appendChild(tr);
@@ -532,8 +550,12 @@ export function buildBorderTab(
   const bgPatShapeSelect = document.createElement('select');
   bgPatShapeSelect.className = 'dialog-select';
   bgPatShapeSelect.style.width = '90px';
+  // [Issue #1172] "없음" 의 value 는 -1 (IR patternType: 무늬 없음 = -1).
+  // 종전엔 0 이라, patternType=-1 문단을 dialog 에 표시하면 select 가 0 으로
+  // 폴백되고, collectMods 가 0!=-1 을 변경으로 오인하여 fillType=solid 를 강제
+  // 주입 → 여백만 바꾸거나 확인만 눌러도 의도치 않은 배경/테두리가 생성됐다.
   for (const [val, lbl] of [
-    ['0', '없음'], ['1', '━'], ['2', '┃'],
+    ['-1', '없음'], ['1', '━'], ['2', '┃'],
     ['3', '╲'], ['4', '╱'], ['5', '┼'], ['6', '╳'],
   ] as const) {
     const o = document.createElement('option');

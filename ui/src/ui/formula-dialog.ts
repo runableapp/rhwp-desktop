@@ -9,6 +9,7 @@
  * - 세 자리마다 쉼표 구분
  */
 import { ModalDialog } from './dialog';
+import { makeOption } from './dom-utils';
 import type { EventBus } from '@/core/event-bus';
 
 interface FormulaContext {
@@ -93,8 +94,8 @@ export class FormulaDialog extends ModalDialog {
     body.appendChild(this.createRow('함수(F):', () => {
       this.funcSelect = document.createElement('select');
       this.funcSelect.className = 'formula-select';
-      this.funcSelect.innerHTML = `<option value="">(선택)</option>`
-        + FUNCTIONS.map(f => `<option value="${f.name}">${f.name} - ${f.desc}</option>`).join('');
+      this.funcSelect.appendChild(makeOption('', '(선택)'));
+      FUNCTIONS.forEach(f => this.funcSelect.appendChild(makeOption(f.name, `${f.name} - ${f.desc}`)));
       this.funcSelect.addEventListener('change', () => {
         const func = this.funcSelect.value;
         if (func) {
@@ -114,7 +115,7 @@ export class FormulaDialog extends ModalDialog {
     body.appendChild(this.createRow('쉬운 범위(R):', () => {
       const sel = document.createElement('select');
       sel.className = 'formula-select';
-      sel.innerHTML = EASY_RANGES.map(r => `<option value="${r.value}">${r.label}</option>`).join('');
+      EASY_RANGES.forEach(r => sel.appendChild(makeOption(r.value, r.label)));
       sel.addEventListener('change', () => {
         if (sel.value) {
           const pos = this.formulaInput.selectionStart ?? this.formulaInput.value.length;
@@ -132,7 +133,7 @@ export class FormulaDialog extends ModalDialog {
     body.appendChild(this.createRow('형식(M):', () => {
       this.formatSelect = document.createElement('select');
       this.formatSelect.className = 'formula-select';
-      this.formatSelect.innerHTML = FORMATS.map(f => `<option value="${f.value}">${f.label}</option>`).join('');
+      FORMATS.forEach(f => this.formatSelect.appendChild(makeOption(f.value, f.label)));
       return this.formatSelect;
     }));
 

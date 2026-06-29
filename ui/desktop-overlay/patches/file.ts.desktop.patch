@@ -1,0 +1,33 @@
+--- a/src/command/commands/file.ts
++++ b/src/command/commands/file.ts
+@@ -59,6 +59,16 @@ export async function saveCurrentDocument(services: CommandServices): Promise<Sa
+     const bytes = services.wasm.exportHwp();
+     const blob = new Blob([bytes as unknown as BlobPart], { type: 'application/x-hwp' });
+     console.log(`[file:save] format=${sourceFormat}, isHwpx=${isHwpx}, ${bytes.length} bytes`);
++
++    if (window.hwpDesktop?.saveFile) {
++      const res = await window.hwpDesktop.saveFile(saveName, bytes);
++      if (!res.ok) return 'cancelled';
++      services.wasm.fileName = res.path.split(/[\\/]/).pop() || saveName;
++      services.eventBus.emit('document-title-changed', services.wasm.fileName);
++      services.documentState.markClean('save');
++      console.log(`[file:save] ${res.path} (${(bytes.length / 1024).toFixed(1)}KB)`);
++      return 'saved';
++    }
+ 
+     try {
+       const saveResult = await saveDocumentToFileSystem({
+@@ -225,6 +235,13 @@ export const fileCommands: CommandDef[] = [
+     label: '열기',
+     async execute(services) {
+       try {
++        if (window.hwpDesktop?.openFile) {
++          const canReplace = await confirmSaveBeforeReplacingDocument(services);
++          if (!canReplace) return;
++          services.eventBus.emit('request-open-document');
++          return;
++        }
++
+         const canReplace = await confirmSaveBeforeReplacingDocument(services);
+         if (!canReplace) return;
+ 

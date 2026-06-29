@@ -142,7 +142,7 @@ export class StyleDialog extends ModalDialog {
   }
 
   private renderList(): void {
-    this.styleList.innerHTML = '';
+    this.styleList.replaceChildren();
     for (const s of this.styles) {
       const item = document.createElement('div');
       item.className = 'sd-style-item' + (s.id === this.selectedId ? ' sd-selected' : '');
@@ -171,7 +171,7 @@ export class StyleDialog extends ModalDialog {
   }
 
   private updateInfo(): void {
-    this.infoPanel.innerHTML = '';
+    this.infoPanel.replaceChildren();
     try {
       const detail = this.wasm.getStyleDetail(this.selectedId);
       const style = this.styles.find(s => s.id === this.selectedId);
@@ -206,7 +206,11 @@ export class StyleDialog extends ModalDialog {
 
     const p = document.createElement('div');
     p.className = 'sd-info-content';
-    p.innerHTML = content;
+    const lines = content.split('<br>');
+    lines.forEach((line, index) => {
+      if (index > 0) p.appendChild(document.createElement('br'));
+      p.appendChild(document.createTextNode(line.split('&nbsp;').join('\u00A0')));
+    });
     sec.appendChild(p);
 
     this.infoPanel.appendChild(sec);

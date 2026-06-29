@@ -258,7 +258,10 @@ export class NumberingDialog extends ModalDialog {
         cell.classList.add('selected');
         this.selectedBulletIdx = i;
       }
-      cell.innerHTML = `<span class="nd-bullet-char">${preset.displayChar}</span>`;
+      const char = document.createElement('span');
+      char.className = 'nd-bullet-char';
+      char.textContent = preset.displayChar;
+      cell.appendChild(char);
       cell.title = preset.name;
       cell.addEventListener('click', () => {
         grid.querySelectorAll('.nd-bullet-cell').forEach(c => c.classList.remove('selected'));

@@ -1,20 +1,39 @@
 {
-  "name": "rhwp",
+  "name": "@rhwp/core",
+  "version": "0.7.15",
+  "description": "HWP/HWPX file parser and renderer — Rust + WebAssembly",
   "type": "module",
-  "description": "HWP file viewer and editor written in Rust, targeting WebAssembly",
-  "version": "0.7.2",
-  "license": "MIT",
-  "repository": {
-    "type": "git",
-    "url": "https://github.com/pureink-studio/rhwp"
-  },
+  "main": "rhwp.js",
+  "types": "rhwp.d.ts",
   "files": [
     "rhwp_bg.wasm",
     "rhwp.js",
-    "rhwp.d.ts"
+    "rhwp.d.ts",
+    "rhwp_bg.wasm.d.ts"
   ],
-  "main": "rhwp.js",
-  "types": "rhwp.d.ts",
+  "keywords": [
+    "hwp",
+    "hwpx",
+    "hancom",
+    "hangul",
+    "한글",
+    "document",
+    "parser",
+    "renderer",
+    "wasm",
+    "webassembly",
+    "rust"
+  ],
+  "repository": {
+    "type": "git",
+    "url": "git+https://github.com/edwardkim/rhwp.git"
+  },
+  "homepage": "https://edwardkim.github.io/rhwp/",
+  "bugs": {
+    "url": "https://github.com/edwardkim/rhwp/issues"
+  },
+  "license": "MIT",
+  "author": "Edward Kim",
   "sideEffects": [
     "./snippets/*"
   ]

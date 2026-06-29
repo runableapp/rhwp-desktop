@@ -26,6 +26,21 @@ jobs:
         with:
           node-version: "22"
 
+      - name: Install Rust toolchain (rhwp WASM)
+        uses: dtolnay/rust-toolchain@stable
+        with:
+          targets: wasm32-unknown-unknown
+
+      - name: Install wasm-pack
+        run: curl https://rustwasm.github.io/wasm-pack/installer/init.sh -sSf | sh
+
+      - name: Sync latest rhwp (WASM + UI)
+        env:
+          GIT_LFS_SKIP_SMUDGE: "1"
+        run: |
+          chmod +x ./scripts/build-rhwp-wasm-and-sync.sh
+          RHWP_BUILD_METHOD=wasm-pack ./scripts/build-rhwp-wasm-and-sync.sh
+
       - name: Install Linux build dependencies
         if: runner.os == 'Linux'
         run: |
@@ -37,7 +52,7 @@ jobs:
 
       - name: Install UI deps
         working-directory: ui
-        run: npm ci
+        run: npm install
 
       - name: Build UI
         working-directory: ui

@@ -1,4 +1,5 @@
 import { ModalDialog } from './dialog';
+import { appendSvgMarkup } from './dom-utils';
 import type { WasmBridge } from '@/core/wasm-bridge';
 import type { CellProperties, TableProperties } from '@/core/types';
 import type { EventBus } from '@/core/event-bus';
@@ -674,7 +675,7 @@ export class TableCellPropsDialog extends ModalDialog {
       const btn = document.createElement('button');
       btn.type = 'button';
       btn.className = 'tcp-caption-item';
-      btn.innerHTML = pos.svg;
+      appendSvgMarkup(btn, pos.svg);
       btn.dataset.dir = String(pos.dir);
       btn.dataset.sub = String(pos.sub);
       btn.addEventListener('click', () => {

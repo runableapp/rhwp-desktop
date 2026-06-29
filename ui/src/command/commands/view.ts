@@ -1,5 +1,15 @@
 import type { CommandDef } from '../types';
 import { GridSettingsDialog } from '../../ui/grid-settings-dialog';
+import {
+  type GridOffsetMm,
+  type GridViewSettings,
+  getGridViewSettings,
+  setGridViewSettings,
+  toggleGridVisibility,
+} from '../../view/grid-settings';
+import { HWPUNIT_PER_MM } from '../../core/hwp-constants';
+
+const PX_TO_MM = 25.4 / 96;
 
 /** 배율 고정값 커맨드 생성 헬퍼 */
 function zoomLevel(pct: number): CommandDef {
@@ -10,6 +20,76 @@ function zoomLevel(pct: number): CommandDef {
       services.getViewportManager()?.setZoom(pct / 100);
     },
   };
+}
+
+interface GridOriginMetrics {
+  defaults: Record<'page' | 'paper', GridOffsetMm>;
+  bases: Record<'page' | 'paper', GridOffsetMm>;
+}
+
+function getGridOriginMetrics(services: Parameters<CommandDef['execute']>[0]): GridOriginMetrics {
+  let pageIndex = 0;
+  const ih = services.getInputHandler();
+  const cursor = ih ? (ih as any).cursor : null;
+  if (typeof cursor?.rect?.pageIndex === 'number') {
+    pageIndex = cursor.rect.pageIndex;
+  }
+
+  const pageInfo = services.wasm.getPageInfo(pageIndex);
+  const documentInfo = services.wasm.getDocumentInfo();
+  const sectionDef = services.wasm.getSectionDef(pageInfo.sectionIndex ?? 0);
+  const pageBorderFill = services.wasm.getPageBorderFill(pageInfo.sectionIndex ?? 0);
+  const rawPageDef = services.wasm.getPageDef(pageInfo.sectionIndex ?? 0);
+  const paperX = roundMm(rawPageDef.marginLeft / HWPUNIT_PER_MM);
+  const paperBaseY = roundMm((rawPageDef.marginTop + rawPageDef.marginHeader) / HWPUNIT_PER_MM);
+  const hwp3PageYOffsetY = documentInfo.hwp3Variant && pageBorderFill.basis === 'page'
+    ? roundMm(sectionDef.columnSpacing / HWPUNIT_PER_MM)
+    : 0;
+  const paperDefaultY = hwp3PageYOffsetY > 0
+    ? roundMm(
+      roundMm(rawPageDef.marginTop / HWPUNIT_PER_MM)
+      + roundMm(rawPageDef.marginHeader / HWPUNIT_PER_MM)
+      + hwp3PageYOffsetY,
+    )
+    : paperBaseY;
+  const pageDefaultY = roundMm(paperDefaultY - paperBaseY);
+
+  return {
+    defaults: {
+      page: { x: 0, y: pageDefaultY },
+      paper: {
+        x: paperX,
+        y: paperDefaultY,
+      },
+    },
+    bases: {
+      page: {
+        x: paperX,
+        y: paperBaseY,
+      },
+      paper: { x: 0, y: 0 },
+    },
+  };
+}
+
+function roundMm(value: number): number {
+  return Math.round(value * 100) / 100;
+}
+
+function applyGridDefaults(settings: GridViewSettings, defaults: GridOriginMetrics['defaults']): GridViewSettings {
+  if (!closeMm(settings.offsetXmm, 0) || !closeMm(settings.offsetYmm, 0)) {
+    return settings;
+  }
+  const defaultOffset = defaults[settings.origin];
+  return {
+    ...settings,
+    offsetXmm: defaultOffset.x,
+    offsetYmm: defaultOffset.y,
+  };
+}
+
+function closeMm(a: number, b: number): boolean {
+  return Number.isFinite(a) && Math.abs(a - b) < 0.01;
 }
 
 export const viewCommands: CommandDef[] = [
@@ -87,7 +167,7 @@ export const viewCommands: CommandDef[] = [
       document.querySelectorAll('[data-cmd="view:para-mark"]').forEach(el => {
         el.classList.toggle('active', next);
       });
-      services.eventBus.emit('document-changed');
+      services.eventBus.emit('document-view-changed');
     },
   },
   (() => {
@@ -103,7 +183,7 @@ export const viewCommands: CommandDef[] = [
         document.querySelectorAll('[data-cmd="view:para-mark"]').forEach(el => {
           el.classList.toggle('active', showParaMarks);
         });
-        services.eventBus.emit('document-changed');
+        services.eventBus.emit('document-view-changed');
       },
     } satisfies CommandDef;
   })(),
@@ -119,7 +199,7 @@ export const viewCommands: CommandDef[] = [
         el.classList.toggle('active', next);
       });
       services.eventBus.emit('transparent-borders-changed', next);
-      services.eventBus.emit('document-changed');
+      services.eventBus.emit('document-view-changed');
     },
   },
   (() => {
@@ -134,10 +214,23 @@ export const viewCommands: CommandDef[] = [
         document.querySelectorAll('[data-cmd="view:toggle-clip"]').forEach(el => {
           el.classList.toggle('active', !clipEnabled);
         });
-        services.eventBus.emit('document-changed');
+        services.eventBus.emit('document-view-changed');
       },
     } satisfies CommandDef;
   })(),
+  {
+    id: 'view:toggle-grid',
+    label: '격자 보기',
+    icon: 'icon-grid',
+    canExecute: (ctx) => ctx.hasDocument,
+    execute(services) {
+      const next = toggleGridVisibility();
+      document.querySelectorAll('[data-cmd="view:toggle-grid"]').forEach(el => {
+        el.classList.toggle('active', next.visible);
+      });
+      services.eventBus.emit('grid-view-changed', next);
+    },
+  },
   {
     id: 'view:grid-settings',
     label: '격자 설정',
@@ -145,20 +238,54 @@ export const viewCommands: CommandDef[] = [
     canExecute: (ctx) => ctx.hasDocument,
     execute(services) {
       const ih = services.getInputHandler();
-      if (!ih) return;
-      new GridSettingsDialog(ih.getGridStepMm(), (mm) => ih.setGridStep(mm)).show();
+      const originMetrics = getGridOriginMetrics(services);
+      new GridSettingsDialog(
+        applyGridDefaults(getGridViewSettings(), originMetrics.defaults),
+        originMetrics.bases,
+        ih?.getGridStepMm() ?? 3,
+        (settings, moveStepMm) => {
+          const next = setGridViewSettings(settings);
+          ih?.setGridStep(moveStepMm);
+          document.querySelectorAll('[data-cmd="view:toggle-grid"]').forEach(el => {
+            el.classList.toggle('active', next.visible);
+          });
+          services.eventBus.emit('grid-view-changed', next);
+        },
+      ).show();
     },
   },
-  {
-    id: 'view:toolbox-basic',
-    label: '기본',
-    canExecute: () => false,
-    execute() { /* TODO */ },
-  },
-  {
-    id: 'view:toolbox-format',
-    label: '서식',
-    canExecute: () => false,
-    execute() { /* TODO */ },
-  },
+  (() => {
+    let visible: boolean | null = null;
+    return {
+      id: 'view:toolbox-basic',
+      label: '기본',
+      execute() {
+        const el = document.getElementById('icon-toolbar');
+        if (!el) return;
+        if (visible === null) visible = getComputedStyle(el).display !== 'none';
+        visible = !visible;
+        el.style.display = visible ? '' : 'none';
+        document.querySelectorAll('[data-cmd="view:toolbox-basic"]').forEach(btn => {
+          btn.classList.toggle('active', visible!);
+        });
+      },
+    } satisfies CommandDef;
+  })(),
+  (() => {
+    let visible: boolean | null = null;
+    return {
+      id: 'view:toolbox-format',
+      label: '서식',
+      execute() {
+        const el = document.getElementById('style-bar');
+        if (!el) return;
+        if (visible === null) visible = getComputedStyle(el).display !== 'none';
+        visible = !visible;
+        el.style.display = visible ? '' : 'none';
+        document.querySelectorAll('[data-cmd="view:toolbox-format"]').forEach(btn => {
+          btn.classList.toggle('active', visible!);
+        });
+      },
+    } satisfies CommandDef;
+  })(),
 ];

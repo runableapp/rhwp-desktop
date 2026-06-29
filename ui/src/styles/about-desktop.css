@@ -1,0 +1,59 @@
+/* RHWP Desktop — about dialog overrides (applied on top of rhwp-studio base styles) */
+
+.about-title-row {
+  display: flex;
+  flex-wrap: wrap;
+  align-items: baseline;
+  justify-content: center;
+  gap: 10px;
+  margin-bottom: 6px;
+}
+
+.about-title-row .about-product-name {
+  margin-bottom: 0;
+}
+
+.about-version-inline {
+  font-size: var(--font-size-sm);
+  font-weight: normal;
+  color: var(--color-text-muted);
+  line-height: 1.2;
+}
+
+.about-product-name-ko-row {
+  display: flex;
+  flex-wrap: wrap;
+  align-items: baseline;
+  justify-content: center;
+  gap: 8px 10px;
+  font-size: var(--font-size-md);
+  color: #4a5a8a;
+  margin-bottom: 6px;
+  line-height: 1.4;
+  max-width: 100%;
+}
+
+.about-external-link {
+  color: var(--color-link, #2563eb);
+  text-decoration: underline;
+  word-break: break-all;
+  font-size: var(--font-size-sm);
+}
+
+.about-wrap-desc {
+  font-size: var(--font-size-sm);
+  color: var(--color-text-muted);
+  line-height: 1.5;
+  max-width: 400px;
+  margin: 0 auto 12px;
+  text-align: center;
+}
+
+.about-rhwp-repo {
+  font-size: var(--font-size-sm);
+  color: var(--color-text-muted);
+  margin: 0 auto 16px;
+  text-align: center;
+  line-height: 1.4;
+  word-break: break-all;
+}

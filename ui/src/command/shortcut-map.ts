@@ -2,6 +2,8 @@
 export interface ShortcutDef {
   /** 키 문자 (소문자). 예: 'z', 'b', '=', '-' */
   key: string;
+  /** 물리 키 코드. IME 입력 중 key가 Process일 때 사용한다. 예: 'KeyJ' */
+  code?: string;
   /** Ctrl (Windows) 또는 Meta (Mac) */
   ctrl?: boolean;
   shift?: boolean;
@@ -16,10 +18,18 @@ export const defaultShortcuts: [ShortcutDef, string][] = [
   [{ key: 'y', ctrl: true }, 'edit:redo'],
   [{ key: 'a', ctrl: true }, 'edit:select-all'],
 
+  [{ key: 'e', ctrl: true }, 'edit:delete'],
+  [{ key: 'ㄷ', ctrl: true }, 'edit:delete'],
+
   // 파일
   [{ key: 'n', alt: true }, 'file:new-doc'],
   [{ key: 'ㅜ', alt: true }, 'file:new-doc'],
+  [{ key: 'o', ctrl: true }, 'file:open'],
+  [{ key: 'ㅐ', ctrl: true }, 'file:open'],
   [{ key: 's', ctrl: true }, 'file:save'],
+  // [Task #833] Ctrl+Shift+S → 다른 이름으로 저장 (한글 IME 'ㄴ' 도 함께).
+  [{ key: 's', ctrl: true, shift: true }, 'file:save-as'],
+  [{ key: 'ㄴ', ctrl: true, shift: true }, 'file:save-as'],
   [{ key: 'p', ctrl: true }, 'file:print'],
 
   // 서식
@@ -47,6 +57,8 @@ export const defaultShortcuts: [ShortcutDef, string][] = [
   [{ key: 'f', ctrl: true }, 'edit:find'],
   [{ key: 'f2', ctrl: true }, 'edit:find-replace'],
   [{ key: 'l', ctrl: true }, 'edit:find-again'],
+  [{ key: 'v', alt: true, shift: true }, 'edit:compare-documents'],
+  [{ key: 'h', ctrl: true, shift: true }, 'edit:document-history'],
   [{ key: 'g', alt: true }, 'edit:goto'],
   [{ key: 'ㅎ', alt: true }, 'edit:goto'],
 
@@ -56,6 +68,7 @@ export const defaultShortcuts: [ShortcutDef, string][] = [
   // 쪽
   [{ key: 'enter', ctrl: true }, 'page:break'],
   [{ key: 'enter', ctrl: true, shift: true }, 'page:column-break'],
+  [{ key: 'enter', ctrl: true, alt: true }, 'page:col-settings'],
 
   // 줄간격
   [{ key: 'a', alt: true, shift: true }, 'format:line-spacing-decrease'],
@@ -72,6 +85,16 @@ export const defaultShortcuts: [ShortcutDef, string][] = [
   [{ key: ']', ctrl: true }, 'format:font-size-increase'],
   [{ key: '[', ctrl: true }, 'format:font-size-decrease'],
 
+  // 장평/자간 (한컴 호환)
+  [{ key: 'j', code: 'KeyJ', alt: true, shift: true }, 'format:char-ratio-decrease'],
+  [{ key: 'ㅓ', alt: true, shift: true }, 'format:char-ratio-decrease'],
+  [{ key: 'k', code: 'KeyK', alt: true, shift: true }, 'format:char-ratio-increase'],
+  [{ key: 'ㅏ', alt: true, shift: true }, 'format:char-ratio-increase'],
+  [{ key: 'n', code: 'KeyN', alt: true, shift: true }, 'format:char-spacing-decrease'],
+  [{ key: 'ㅜ', alt: true, shift: true }, 'format:char-spacing-decrease'],
+  [{ key: 'w', code: 'KeyW', alt: true, shift: true }, 'format:char-spacing-increase'],
+  [{ key: 'ㅈ', alt: true, shift: true }, 'format:char-spacing-increase'],
+
   // 문단 정렬
   // Ctrl+Shift+L: 왼쪽 정렬 (브라우저 주소창 포커스이나 편집 영역에서 양보)
   [{ key: 'l', ctrl: true, shift: true }, 'format:align-left'],
@@ -81,12 +104,18 @@ export const defaultShortcuts: [ShortcutDef, string][] = [
   // Ctrl+Shift+C: 브라우저 요소검사 충돌 → Alt+Shift+C로 재매핑
   // Ctrl+Shift+T: 브라우저 탭복원 충돌 → Alt+Shift+T로 재매핑
   [{ key: 'h', alt: true, shift: true }, 'format:align-right'],   // 오른쪽 정렬 (재매핑, H=rigHt)
+  [{ key: 'ㅗ', alt: true, shift: true }, 'format:align-right'],
   [{ key: 'c', alt: true, shift: true }, 'format:align-center'],  // 가운데 정렬 (재매핑)
+  [{ key: 'ㅊ', alt: true, shift: true }, 'format:align-center'],
   [{ key: 'd', alt: true, shift: true }, 'format:align-distribute'], // 배분 정렬 (재매핑)
+  [{ key: 'ㅇ', alt: true, shift: true }, 'format:align-distribute'],
 
   // 표
   [{ key: 'insert', alt: true }, 'table:insert-col-left'],
   [{ key: 'delete', alt: true }, 'table:delete-col'],
+  [{ key: 's', ctrl: true, shift: true }, 'table:block-sum'],
+  [{ key: 'a', ctrl: true, shift: true }, 'table:block-avg'],
+  [{ key: 'p', ctrl: true, shift: true }, 'table:block-product'],
 ];
 
 /**
@@ -98,13 +127,16 @@ export function matchShortcut(
   shortcuts: [ShortcutDef, string][],
 ): string | null {
   const ctrlOrMeta = e.ctrlKey || e.metaKey;
+  const eventKey = e.key.toLowerCase();
+  const eventCode = (e.code ?? '').toLowerCase();
 
   for (const [def, cmdId] of shortcuts) {
     if (def.ctrl && !ctrlOrMeta) continue;
     if (!def.ctrl && ctrlOrMeta) continue;
     if ((def.shift ?? false) !== e.shiftKey) continue;
     if ((def.alt ?? false) !== e.altKey) continue;
-    if (e.key.toLowerCase() === def.key) return cmdId;
+    if (eventKey === def.key) return cmdId;
+    if (def.code && eventCode === def.code.toLowerCase()) return cmdId;
   }
   return null;
 }

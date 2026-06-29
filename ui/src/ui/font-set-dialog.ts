@@ -72,7 +72,7 @@ export class FontSetDialog extends ModalDialog {
   }
 
   private refreshList(): void {
-    this.listEl.innerHTML = '';
+    this.listEl.replaceChildren();
     const builtins = BUILTIN_FONT_SETS;
     const customs = userSettings.getUserFontSets();
 
@@ -129,15 +129,34 @@ export class FontSetDialog extends ModalDialog {
   }
 
   private showInfo(fs: FontSet | null): void {
+    this.infoEl.replaceChildren();
     if (!fs) {
-      this.infoEl.innerHTML = '<div class="fs-info-empty">대표 글꼴을 선택하세요</div>';
+      const empty = document.createElement('div');
+      empty.className = 'fs-info-empty';
+      empty.textContent = '대표 글꼴을 선택하세요';
+      this.infoEl.appendChild(empty);
       return;
     }
-    const rows = LANG_LABELS.map((label, i) => {
+
+    const name = document.createElement('div');
+    name.className = 'fs-info-name';
+    name.textContent = fs.name;
+    this.infoEl.appendChild(name);
+
+    LANG_LABELS.forEach((label, i) => {
       const val = UserSettingsService_getFontByLang(fs, i);
-      return `<div class="fs-info-row"><span class="fs-info-label">${label}</span><span class="fs-info-value">${val}</span></div>`;
-    }).join('');
-    this.infoEl.innerHTML = `<div class="fs-info-name">${fs.name}</div>${rows}`;
+      const row = document.createElement('div');
+      row.className = 'fs-info-row';
+      const labelSpan = document.createElement('span');
+      labelSpan.className = 'fs-info-label';
+      labelSpan.textContent = label;
+      const valueSpan = document.createElement('span');
+      valueSpan.className = 'fs-info-value';
+      valueSpan.textContent = val;
+      row.appendChild(labelSpan);
+      row.appendChild(valueSpan);
+      this.infoEl.appendChild(row);
+    });
   }
 
   private onAdd(): void {

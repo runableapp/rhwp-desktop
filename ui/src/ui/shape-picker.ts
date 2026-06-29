@@ -81,7 +81,14 @@ export function showShapePicker(anchorEl: HTMLElement, opts: ShapePickerOptions)
       const btn = document.createElement('button');
       btn.className = 'shape-picker-btn';
       btn.title = shape.label;
-      btn.innerHTML = `<span class="shape-picker-icon">${shape.icon}</span><span class="shape-picker-label">${shape.label}</span>`;
+      const icon = document.createElement('span');
+      icon.className = 'shape-picker-icon';
+      icon.textContent = shape.icon;
+      const label = document.createElement('span');
+      label.className = 'shape-picker-label';
+      label.textContent = shape.label;
+      btn.appendChild(icon);
+      btn.appendChild(label);
       btn.addEventListener('click', () => {
         closePicker();
         opts.onSelect(shape.type);

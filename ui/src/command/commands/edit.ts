@@ -2,9 +2,18 @@ import type { CommandDef } from '../types';
 import { FieldEditDialog } from '@/ui/field-edit-dialog';
 import { FindDialog } from '@/ui/find-dialog';
 import { GotoDialog } from '@/ui/goto-dialog';
+import { HistoryDialog } from '@/ui/history-dialog';
+import { CompareDialog } from '@/ui/compare-dialog';
+import { CompareSessionStore } from '@/compare/session';
 
 /** 검색 대화상자 싱글톤 — 열려 있으면 재사용 */
 let findDialogInstance: FindDialog | null = null;
+/** 싱글톤: 문서 이력 관리 대화상자 */
+let historyDialogInstance: HistoryDialog | null = null;
+/** 싱글톤: 두 파일 문서 비교 대화상자 */
+let compareDialogInstance: CompareDialog | null = null;
+/** 비교/이력 공용 세션 스토어 */
+let compareSessionStore: CompareSessionStore | null = null;
 
 export const editCommands: CommandDef[] = [
   {
@@ -53,8 +62,8 @@ export const editCommands: CommandDef[] = [
     icon: 'icon-paste',
     shortcutLabel: 'Ctrl+V',
     canExecute: (ctx) => ctx.hasDocument,
-    execute() {
-      document.execCommand('paste');
+    execute(services) {
+      services.getInputHandler()?.performPaste();
     },
   },
   {
@@ -70,8 +79,10 @@ export const editCommands: CommandDef[] = [
     label: '지우기',
     icon: 'icon-delete',
     shortcutLabel: 'Ctrl+E',
-    canExecute: () => false, // 미구현
-    execute() { /* TODO */ },
+    canExecute: (ctx) => ctx.hasDocument && (ctx.hasSelection || ctx.inPictureObjectSelection || ctx.inTableObjectSelection),
+    execute(services) {
+      services.getInputHandler()?.performDelete();
+    },
   },
   {
     id: 'edit:select-all',
@@ -152,6 +163,38 @@ export const editCommands: CommandDef[] = [
     },
   },
   {
+    id: 'edit:compare-documents',
+    label: '문서 비교',
+    shortcutLabel: 'Alt+Shift+V',
+    canExecute: () => true,
+    execute(services) {
+      if (!compareSessionStore) {
+        compareSessionStore = new CompareSessionStore(services.eventBus);
+      }
+      if (historyDialogInstance?.isOpen()) historyDialogInstance.hide();
+      if (compareDialogInstance && compareDialogInstance.isOpen()) return;
+      compareDialogInstance = new CompareDialog(services, compareSessionStore);
+      compareDialogInstance.show();
+    },
+  },
+  {
+    id: 'edit:document-history',
+    label: '문서 이력 관리',
+    shortcutLabel: 'Ctrl+Shift+H',
+    canExecute: () => true,
+    execute(services) {
+      if (!compareSessionStore) {
+        compareSessionStore = new CompareSessionStore(services.eventBus);
+      }
+      if (compareDialogInstance?.isOpen()) compareDialogInstance.hide();
+      if (historyDialogInstance && historyDialogInstance.isOpen()) {
+        return;
+      }
+      historyDialogInstance = new HistoryDialog(services, compareSessionStore);
+      historyDialogInstance.show();
+    },
+  },
+  {
     id: 'edit:goto',
     label: '찾아가기(G)',
     shortcutLabel: 'Alt+G',
@@ -164,7 +207,7 @@ export const editCommands: CommandDef[] = [
   {
     id: 'field:edit',
     label: '누름틀 고치기(E)...',
-    shortcutLabel: 'Ctrl+N,K',
+    shortcutLabel: 'Ctrl+M,K',
     canExecute: (ctx) => ctx.hasDocument && ctx.inField,
     execute(services) {
       const ih = services.getInputHandler();

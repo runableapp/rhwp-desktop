@@ -32,6 +32,7 @@
   display: flex;
   align-items: center;
   justify-content: space-between;
+  cursor: move;
 }
 
 .dialog-close {
@@ -45,6 +46,7 @@
   line-height: 16px;
   text-align: center;
   padding: 0;
+  cursor: pointer;
 }
 
 .dialog-close:hover {
@@ -232,6 +234,21 @@
   height: 38px;
 }
 
+.icon-radio-icon svg {
+  display: block;
+  flex: 0 0 auto;
+}
+
+.orient-icon-portrait {
+  width: 28px;
+  height: 36px;
+}
+
+.orient-icon-landscape {
+  width: 40px;
+  height: 28px;
+}
+
 .icon-radio-text {
   font-size: var(--font-size-xs);
   color: var(--color-text);
@@ -244,19 +261,6 @@
   padding: 16px 24px;
 }
 
-.about-title-row {
-  display: flex;
-  flex-wrap: wrap;
-  align-items: baseline;
-  justify-content: center;
-  gap: 10px;
-  margin-bottom: 6px;
-}
-
-.about-title-row .about-product-name {
-  margin-bottom: 0;
-}
-
 .about-product-name {
   font-size: 18px;
   font-weight: bold;
@@ -264,49 +268,34 @@
   margin-bottom: 2px;
 }
 
-.about-version-inline {
-  font-size: var(--font-size-sm);
-  font-weight: normal;
-  color: var(--color-text-muted);
-  line-height: 1.2;
-}
-
-.about-product-name-ko-row {
-  display: flex;
-  flex-wrap: wrap;
-  align-items: baseline;
-  justify-content: center;
-  gap: 8px 10px;
+.about-product-name-ko {
   font-size: var(--font-size-md);
   color: #4a5a8a;
-  margin-bottom: 6px;
-  line-height: 1.4;
-  max-width: 100%;
+  margin-bottom: 8px;
 }
 
-.about-external-link {
-  color: var(--color-link, #2563eb);
-  text-decoration: underline;
-  word-break: break-all;
-  font-size: var(--font-size-sm);
-}
-
-.about-wrap-desc {
-  font-size: var(--font-size-sm);
+.about-version {
+  font-size: var(--font-size-md);
   color: var(--color-text-muted);
-  line-height: 1.5;
-  max-width: 400px;
-  margin: 0 auto 12px;
-  text-align: center;
+  margin-bottom: 12px;
 }
 
-.about-rhwp-repo {
+.about-tech {
   font-size: var(--font-size-sm);
-  color: var(--color-text-muted);
-  margin: 0 auto 16px;
-  text-align: center;
-  line-height: 1.4;
-  word-break: break-all;
+  color: var(--color-text-hint);
+  margin-bottom: 16px;
+}
+
+.about-notice {
+  background: #f5f6fa;
+  border: 1px solid #d0d4e2;
+  border-radius: 4px;
+  padding: 10px 14px;
+  font-size: var(--font-size-base);
+  color: #444;
+  line-height: 1.6;
+  margin-bottom: 16px;
+  text-align: left;
 }
 
 .about-license-title {
@@ -486,12 +475,54 @@
 
 /* ── 수식 편집 대화상자 ────────────────────────── */
 .eq-dialog {
-  width: 520px;
+  width: 560px;
 }
 .eq-body {
   display: flex;
   flex-direction: column;
   gap: 8px;
+}
+/* 모드 토글 */
+.eq-mode-btn {
+  margin-left: auto;
+  margin-right: 8px;
+  padding: 2px 10px;
+  border: 1px solid var(--color-border);
+  border-radius: 3px;
+  background: var(--color-accent-bg);
+  cursor: pointer;
+  font-size: 11px;
+  font-weight: 600;
+  letter-spacing: 0.5px;
+}
+.eq-mode-btn:hover {
+  background: var(--color-primary);
+  color: #fff;
+}
+/* 탭 */
+.eq-tabs {
+  display: flex;
+  gap: 1px;
+  border-bottom: 1px solid var(--color-border-lighter);
+}
+.eq-tab {
+  padding: 4px 10px;
+  border: 1px solid transparent;
+  border-bottom: none;
+  border-radius: 3px 3px 0 0;
+  background: none;
+  cursor: pointer;
+  font-size: var(--font-size-sm);
+  color: var(--color-text-secondary);
+}
+.eq-tab:hover {
+  background: var(--color-accent-bg);
+}
+.eq-tab-active {
+  background: var(--color-surface);
+  border-color: var(--color-border-lighter);
+  color: var(--color-text);
+  font-weight: 600;
 }
 /* 도구 모음 */
 .eq-toolbar {
@@ -501,7 +532,9 @@
   padding: 4px;
   background: var(--color-bg);
   border: 1px solid var(--color-border-lighter);
-  border-radius: 3px;
+  border-top: none;
+  border-radius: 0 0 3px 3px;
+  min-height: 30px;
 }
 .eq-toolbar-btn {
   min-width: 28px;
@@ -518,10 +551,71 @@
   background: var(--color-accent-bg);
   border-color: var(--color-primary);
 }
-.eq-toolbar-sep {
-  width: 1px;
-  margin: 2px 3px;
-  background: #c0c0c0;
+/* 기호 검색 */
+.eq-search-row {
+  position: relative;
+}
+.eq-search-input {
+  width: 100%;
+  padding: 4px 8px;
+  border: 1px solid var(--color-border);
+  border-radius: 3px;
+  font-size: var(--font-size-sm);
+  box-sizing: border-box;
+}
+.eq-search-input:focus {
+  border-color: var(--color-primary);
+  outline: none;
+}
+.eq-search-results {
+  position: absolute;
+  top: 100%;
+  left: 0;
+  right: 0;
+  background: var(--color-surface);
+  border: 1px solid var(--color-border-dark);
+  border-radius: 0 0 3px 3px;
+  max-height: 160px;
+  overflow-y: auto;
+  z-index: 10;
+}
+.eq-search-result-btn {
+  display: flex;
+  align-items: center;
+  gap: 8px;
+  width: 100%;
+  padding: 4px 8px;
+  border: none;
+  background: none;
+  cursor: pointer;
+  font-size: var(--font-size-sm);
+  text-align: left;
+}
+.eq-search-result-btn:hover {
+  background: var(--color-accent-bg);
+}
+.eq-sr-display {
+  font-size: 16px;
+  min-width: 20px;
+  text-align: center;
+}
+.eq-sr-name {
+  color: var(--color-text-secondary);
+  font-family: 'Consolas', monospace;
+  font-size: 11px;
+}
+/* LaTeX 전환 힌트 */
+.eq-latex-hint {
+  padding: 4px 8px;
+  background: #fffbea;
+  border: 1px solid #f0d060;
+  border-radius: 3px;
+  font-size: var(--font-size-sm);
+  color: #7a6200;
+}
+.eq-latex-hint a {
+  color: #2563eb;
+  text-decoration: underline;
 }
 /* 미리보기 */
 .eq-preview {
@@ -549,7 +643,10 @@
 .eq-preview-error {
   color: #c44;
 }
-/* 스크립트 입력 */
+/* 스크립트 입력 + 자동완성 */
+.eq-script-wrap {
+  position: relative;
+}
 .eq-script {
   width: 100%;
   min-height: 72px;
@@ -564,6 +661,45 @@
 .eq-script:focus {
   border-color: var(--color-primary);
   outline: none;
+}
+.eq-autocomplete {
+  position: absolute;
+  bottom: 100%;
+  left: 0;
+  right: 0;
+  background: var(--color-surface);
+  border: 1px solid var(--color-border-dark);
+  border-radius: 3px 3px 0 0;
+  max-height: 180px;
+  overflow-y: auto;
+  z-index: 10;
+  box-shadow: 0 -2px 8px rgba(0,0,0,0.12);
+}
+.eq-ac-item {
+  display: flex;
+  align-items: center;
+  gap: 8px;
+  padding: 4px 8px;
+  cursor: pointer;
+  font-size: var(--font-size-sm);
+}
+.eq-ac-item:hover,
+.eq-ac-selected {
+  background: var(--color-accent-bg);
+}
+.eq-ac-display {
+  font-size: 15px;
+  min-width: 20px;
+  text-align: center;
+}
+.eq-ac-name {
+  font-family: 'Consolas', monospace;
+  font-size: 12px;
+}
+.eq-ac-group {
+  margin-left: auto;
+  color: var(--color-text-placeholder);
+  font-size: 10px;
 }
 /* 속성 행 */
 .eq-props-row {
