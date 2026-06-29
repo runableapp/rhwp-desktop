@@ -14,9 +14,6 @@ jobs:
       matrix:
         os: [ubuntu-latest, windows-latest, macos-latest]
     runs-on: ${{ matrix.os }}
-    defaults:
-      run:
-        working-directory: desktop
     steps:
       - name: Checkout
         uses: actions/checkout@v4
@@ -48,6 +45,7 @@ jobs:
           sudo apt-get install -y binutils fakeroot rpm squashfs-tools
 
       - name: Install desktop deps
+        working-directory: desktop
         run: npm ci
 
       - name: Install UI deps
@@ -59,29 +57,36 @@ jobs:
         run: npm run build
 
       - name: Prepare icons (base png)
+        working-directory: desktop
         run: npm run prepare:icons
 
       - name: Prepare icons (Windows .ico)
         if: runner.os == 'Windows'
+        working-directory: desktop
         run: node scripts/gen-win-ico.mjs
 
       - name: Prepare icons (macOS .icns)
         if: runner.os == 'macOS'
+        working-directory: desktop
         run: ./scripts/gen-mac-icns.sh
 
       - name: Build desktop
+        working-directory: desktop
         run: npm run build
 
       - name: Package (Linux AppImage)
         if: runner.os == 'Linux'
+        working-directory: desktop
         run: npx electron-builder --linux AppImage --publish never
 
       - name: Package (Windows)
         if: runner.os == 'Windows'
+        working-directory: desktop
         run: npx electron-builder --win nsis --publish never
 
       - name: Package (macOS)
         if: runner.os == 'macOS'
+        working-directory: desktop
         run: npx electron-builder --mac dmg --publish never
 
       - name: Upload artifacts
