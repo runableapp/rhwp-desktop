@@ -32,6 +32,16 @@ fi
 
 log() { echo "[hwp-editor] $*"; }
 
+sed_inplace() {
+  local file=$1
+  shift
+  if [[ "$(uname -s)" == "Darwin" ]]; then
+    sed -i '' "$@" "$file"
+  else
+    sed -i "$@" "$file"
+  fi
+}
+
 # rhwp stores large test PDFs in Git LFS; we only need source for WASM/UI builds.
 export GIT_LFS_SKIP_SMUDGE="${GIT_LFS_SKIP_SMUDGE:-1}"
 
@@ -196,9 +206,11 @@ pkg.dependencies = { ...(pkg.dependencies || {}), ...(merge.dependencies || {}) 
 fs.writeFileSync(outPath, JSON.stringify(pkg, null, 2) + '\n');
 " "${UI_DIR}/package.json" "${OVERLAY_DIR}/package.merge.json"
 
-  find "${UI_DIR}/src" -name '*.ts' -print0 | xargs -0 sed -i \
-    -e "s|from '@wasm/rhwp.js'|from '@rhwp/core'|g" \
-    -e "s|import('@wasm/rhwp.js')|import('@rhwp/core')|g"
+  while IFS= read -r -d '' file; do
+    sed_inplace "$file" \
+      -e "s|from '@wasm/rhwp.js'|from '@rhwp/core'|g" \
+      -e "s|import('@wasm/rhwp.js')|import('@rhwp/core')|g"
+  done < <(find "${UI_DIR}/src" -name '*.ts' -print0)
 
   if ! grep -q 'setupDesktopOpenHook' "${UI_DIR}/src/main.ts"; then
     patch -d "${UI_DIR}" -p1 < "${OVERLAY_DIR}/patches/main.ts.desktop.patch"

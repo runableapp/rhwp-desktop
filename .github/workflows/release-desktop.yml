@@ -8,7 +8,42 @@ on:
       - "desktop-v*"
 
 jobs:
+  sync-rhwp:
+    name: Sync rhwp (WASM + UI)
+    runs-on: ubuntu-latest
+    steps:
+      - name: Checkout
+        uses: actions/checkout@v4
+
+      - name: Install Rust toolchain (rhwp WASM)
+        uses: dtolnay/rust-toolchain@stable
+        with:
+          targets: wasm32-unknown-unknown
+
+      - name: Install wasm-pack
+        shell: bash
+        run: curl https://rustwasm.github.io/wasm-pack/installer/init.sh -sSf | sh
+
+      - name: Sync latest rhwp (WASM + UI)
+        shell: bash
+        env:
+          GIT_LFS_SKIP_SMUDGE: "1"
+        run: |
+          chmod +x ./scripts/build-rhwp-wasm-and-sync.sh
+          RHWP_BUILD_METHOD=wasm-pack ./scripts/build-rhwp-wasm-and-sync.sh
+          rm -rf ui/node_modules
+
+      - name: Upload synced sources
+        uses: actions/upload-artifact@v4
+        with:
+          name: rhwp-sync
+          retention-days: 1
+          path: |
+            core/pkg
+            ui
+
   build:
+    needs: sync-rhwp
     strategy:
       fail-fast: false
       matrix:
@@ -18,26 +53,15 @@ jobs:
       - name: Checkout
         uses: actions/checkout@v4
 
+      - name: Download synced rhwp sources
+        uses: actions/download-artifact@v4
+        with:
+          name: rhwp-sync
+
       - name: Setup Node
         uses: actions/setup-node@v4
         with:
           node-version: "22"
-
-      - name: Install Rust toolchain (rhwp WASM)
-        uses: dtolnay/rust-toolchain@stable
-        with:
-          targets: wasm32-unknown-unknown
-
-      - name: Install wasm-pack
-        run: curl https://rustwasm.github.io/wasm-pack/installer/init.sh -sSf | sh
-
-      - name: Sync latest rhwp (WASM + UI)
-        working-directory: ${{ github.workspace }}
-        env:
-          GIT_LFS_SKIP_SMUDGE: "1"
-        run: |
-          chmod +x "${GITHUB_WORKSPACE}/scripts/build-rhwp-wasm-and-sync.sh"
-          RHWP_BUILD_METHOD=wasm-pack "${GITHUB_WORKSPACE}/scripts/build-rhwp-wasm-and-sync.sh"
 
       - name: Install Linux build dependencies
         if: runner.os == 'Linux'
@@ -69,6 +93,7 @@ jobs:
       - name: Prepare icons (macOS .icns)
         if: runner.os == 'macOS'
         working-directory: desktop
+        shell: bash
         run: ./scripts/gen-mac-icns.sh
 
       - name: Build desktop
@@ -137,4 +162,3 @@ jobs:
             release-artifacts/**/*.dmg
             release-artifacts/**/*.zip
             release-artifacts/**/latest*.yml
-
